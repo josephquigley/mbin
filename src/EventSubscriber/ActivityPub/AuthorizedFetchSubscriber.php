@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\EventSubscriber\ActivityPub;
 
+use App\Exception\InvalidApSignatureException;
+use App\Service\ActivityPub\HttpSignature;
 use App\Service\ActivityPub\SignatureValidator;
 use App\Service\SettingsManager;
 use Psr\Log\LoggerInterface;
@@ -88,6 +90,23 @@ class AuthorizedFetchSubscriber implements EventSubscriberInterface
         }
 
         try {
+            $keyId = $this->keyId($request->headers->get('signature'));
+
+            // Consulted before the key is fetched, so a defederated or non-allow-listed
+            // host cannot make us open an outbound connection to it. The keyId is not
+            // verified at this point, which only lets a caller choose a host we will not
+            // contact. Reading anything still requires the signature below to verify.
+            if ($this->settingsManager->isBannedInstance($keyId)) {
+                $this->logger->info('[AuthorizedFetchSubscriber] Refusing ActivityPub GET of {route} from a non-federated instance: {keyId}', [
+                    'route' => $route,
+                    'keyId' => $keyId,
+                ]);
+
+                $event->setResponse($this->refuse('This instance does not federate with yours.'));
+
+                return;
+            }
+
             $actorUrl = $this->signatureValidator->validateGetRequest($request->getRequestUri(), $request->headers->all());
         } catch (\Exception $e) {
             $this->logger->info('[AuthorizedFetchSubscriber] Refusing unverified ActivityPub GET of {route}: {reason}', [
@@ -104,6 +123,18 @@ class AuthorizedFetchSubscriber implements EventSubscriberInterface
             'route' => $route,
             'actor' => $actorUrl,
         ]);
+    }
+
+    /**
+     * @throws InvalidApSignatureException when the header is absent or unparseable
+     */
+    private function keyId(?string $signatureHeader): string
+    {
+        if (null === $signatureHeader || '' === $signatureHeader) {
+            throw new InvalidApSignatureException('Missing required signature header');
+        }
+
+        return HttpSignature::parseSignatureHeader($signatureHeader)['keyId'];
     }
 
     private function refuse(string $reason): Response
