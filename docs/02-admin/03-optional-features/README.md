@@ -13,3 +13,4 @@ Like setting-up:
 - [Anubis](07-anubis.md) - A service for weighing the incoming requests and may present them with a proof-of-work challenge. It is useful if your instance gets hit a lot of bot traffic that you're tired of filtering through
 - [Monitoring](08-monitoring.md) - Internal monitoring of requests and messengers
 - [Image compression](09-image-compression.md) - compress images if they exceed your maximum image size
+- [Authorized fetch](10-authorized_fetch.md) - require a valid HTTP signature on inbound ActivityPub GET requests, so only instances you federate with can read your content
