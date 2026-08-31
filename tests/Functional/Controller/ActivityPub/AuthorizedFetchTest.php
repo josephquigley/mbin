@@ -191,13 +191,19 @@ class AuthorizedFetchTest extends WebTestCase
         self::assertResponseIsSuccessful();
     }
 
+    /**
+     * An HTML request never matches an ap_* route, so the gate cannot see it. This
+     * asserts the absence of a refusal rather than a successful render, because the
+     * Webpack asset build is not a prerequisite of this test.
+     */
     public function testHtmlRequestsAreUntouched(): void
     {
         $this->settingsManager->set('MBIN_AUTHORIZED_FETCH', true);
 
         $this->client->request('GET', '/u/user', server: ['HTTP_ACCEPT' => 'text/html']);
 
-        self::assertResponseIsSuccessful();
+        self::assertNotSame(401, $this->client->getResponse()->getStatusCode());
+        self::assertFalse($this->client->getResponse()->headers->has('WWW-Authenticate'));
     }
 
     private function requestSigned(

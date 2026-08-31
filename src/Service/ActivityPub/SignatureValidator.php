@@ -132,6 +132,113 @@ readonly class SignatureValidator
         }
     }
 
+    /**
+     * Attempts to validate the signature of an incoming ActivityPub GET request.
+     *
+     * A GET carries no body, so none of the payload checks that validate() performs
+     * apply here, and there is no digest to compute. The identity of the requester
+     * is taken from the keyId of the signature itself.
+     *
+     * @param string                         $requestTarget The path and query string of the request, as the peer sent it
+     * @param array<string, string|string[]> $headers       Headers attached to the incoming request
+     *
+     * @return string the actor URL whose key verified the request
+     *
+     * @throws InvalidApSignatureException   The HTTP request was not signed appropriately
+     * @throws InvalidUserPublicKeyException The public key of the requesting actor is invalid or null
+     */
+    public function validateGetRequest(string $requestTarget, array $headers): string
+    {
+        $signature = $this->firstHeader($headers, 'signature');
+        $date = $this->firstHeader($headers, 'date');
+
+        if (null === $signature || null === $date) {
+            throw new InvalidApSignatureException('Missing required signature and/or date header');
+        }
+
+        // @todo verify headers date, as validate() does not either
+
+        $signature = HttpSignature::parseSignatureHeader($signature);
+
+        $this->validateUrl($signature['keyId']);
+
+        // A keyId is conventionally the actor URL with a fragment, for example
+        // https://example.org/u/alice#main-key. The key lives on the actor document.
+        $actorUrl = strtok($signature['keyId'], '#');
+
+        $pem = $this->client->getActorObject($actorUrl)['publicKey']['publicKeyPem'] ?? null;
+        if (null === $pem) {
+            throw new InvalidUserPublicKeyException($actorUrl);
+        }
+
+        $pkey = openssl_pkey_get_public($pem);
+        if (false === $pkey) {
+            throw new InvalidUserPublicKeyException($actorUrl);
+        }
+
+        $this->verifyGetSignature($pkey, $signature, $headers, $requestTarget);
+
+        $this->logger->debug('Successfully verified signature of incoming AP GET request.', ['actor' => $actorUrl]);
+
+        return $actorUrl;
+    }
+
+    /**
+     * Verifies the signature of a GET request against the given public key.
+     *
+     * Unlike verifySignature(), this never substitutes a computed digest: a GET has
+     * no body, so a digest named in the signed headers but absent from the request
+     * makes the signature unverifiable rather than merely suspect.
+     *
+     * @param array<string, string>          $signature Parsed signature value
+     * @param array<string, string|string[]> $headers   Headers attached to the incoming request
+     *
+     * @throws InvalidApSignatureException Signature failed verification
+     */
+    private function verifyGetSignature(
+        \OpenSSLAsymmetricKey $pkey,
+        array $signature,
+        array $headers,
+        string $requestTarget,
+    ): void {
+        $headersToSign = [];
+        foreach (explode(' ', $signature['headers']) as $h) {
+            if ('(request-target)' === $h) {
+                $headersToSign[$h] = 'get '.$requestTarget;
+                continue;
+            }
+
+            $value = $this->firstHeader($headers, $h);
+            if (null === $value) {
+                throw new InvalidApSignatureException(\sprintf("The signed header '%s' is not present on the request.", $h));
+            }
+
+            $headersToSign[$h] = $value;
+        }
+
+        $signingString = self::headersToSigningString($headersToSign);
+
+        $verified = openssl_verify($signingString, base64_decode($signature['signature']), $pkey, OPENSSL_ALGO_SHA256);
+
+        if (1 !== $verified) {
+            throw new InvalidApSignatureException('Signature of GET request could not be verified.');
+        }
+    }
+
+    /**
+     * @param array<string, string|string[]> $headers
+     */
+    private function firstHeader(array $headers, string $name): ?string
+    {
+        $value = $headers[$name] ?? null;
+
+        if (\is_array($value)) {
+            $value = $value[0] ?? null;
+        }
+
+        return \is_string($value) && '' !== $value ? $value : null;
+    }
+
     private function validateUrl(string $url): void
     {
         $valid = filter_var($url, FILTER_VALIDATE_URL);
