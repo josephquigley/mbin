@@ -559,12 +559,14 @@ class ActivityPubManager
                 }
                 if ($tempFile = $this->imageManager->download($imageObject['url'])) {
                     $image = $this->imageRepository->findOrCreateFromPath($tempFile);
-                    $image->sourceUrl = $imageObject['url'];
-                    if ($image && isset($imageObject['name'])) {
-                        $image->altText = $imageObject['name'];
+                    if (null !== $image) {
+                        $image->sourceUrl = $imageObject['url'];
+                        if (isset($imageObject['name'])) {
+                            $image->altText = $imageObject['name'];
+                        }
+                        $this->entityManager->persist($image);
+                        $this->entityManager->flush();
                     }
-                    $this->entityManager->persist($image);
-                    $this->entityManager->flush();
                 }
             } catch (\Exception $e) {
                 return null;
