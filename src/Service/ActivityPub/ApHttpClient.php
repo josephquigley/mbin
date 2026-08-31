@@ -716,8 +716,18 @@ class ApHttpClient implements ApHttpClientInterface
         if (!\in_array($method, ['post', 'get'])) {
             throw new InvalidApPostException('Invalid method used to sign headers in ApHttpClient');
         }
+        // The (request-target) pseudo-header is the lowercased method, a space, and the path
+        // AND query of the request target. Signing the path alone would sign something other
+        // than what goes on the wire, and any peer that rebuilds the target from path plus
+        // query (Mastodon and GoToSocial both do) would compute a different signing string.
+        $requestTarget = parse_url($url, PHP_URL_PATH);
+        $query = parse_url($url, PHP_URL_QUERY);
+        if (!empty($query)) {
+            $requestTarget .= '?'.$query;
+        }
+
         $headers = [
-            '(request-target)' => $method.' '.parse_url($url, PHP_URL_PATH),
+            '(request-target)' => $method.' '.$requestTarget,
             'Date' => $date->format('D, d M Y H:i:s \G\M\T'),
             'Host' => parse_url($url, PHP_URL_HOST),
         ];
