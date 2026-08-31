@@ -36,6 +36,7 @@ class AdminFederationController extends AbstractController
             $settings->KBIN_FEDERATION_ENABLED,
             $settings->MBIN_USE_FEDERATION_ALLOW_LIST,
             $settings->KBIN_FEDERATION_PAGE_ENABLED,
+            $settings->MBIN_AUTHORIZED_FETCH,
         );
 
         $form = $this->createForm(FederationSettingsType::class, $dto);
@@ -47,6 +48,7 @@ class AdminFederationController extends AbstractController
             $settings->KBIN_FEDERATION_ENABLED = $dto->federationEnabled;
             $settings->MBIN_USE_FEDERATION_ALLOW_LIST = $dto->federationUsesAllowList;
             $settings->KBIN_FEDERATION_PAGE_ENABLED = $dto->federationPageEnabled;
+            $settings->MBIN_AUTHORIZED_FETCH = $dto->authorizedFetch;
             $this->settingsManager->save($settings);
 
             return $this->redirectToRoute('admin_federation');

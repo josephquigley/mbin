@@ -1083,6 +1083,8 @@ flash_magazine_theme_icon_detached_success: Magazine icon deleted successfully
 delete_magazine_banner: Delete magazine banner
 flash_magazine_theme_banner_detached_success: Magazine banner deleted
   successfully
+federation_authorized_fetch: Require signed ActivityPub fetches (authorized fetch)
+federation_authorized_fetch_help: 'Draft. When enabled, inbound ActivityPub GET requests must carry a valid HTTP signature, and the requesting instance must pass the federation allowlist or ban list. This breaks federation with software that does not sign its GET requests, and it does not hide anything you have already federated out.'
 federation_uses_allowlist: Use allowlist for federation
 defederating_instance: Defederating instance %i
 their_user_follows: Amount of users from their instance following users on our
