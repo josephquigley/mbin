@@ -39,6 +39,7 @@ class InstanceSettingsUpdateApiTest extends WebTestCase
         'MBIN_SSO_SHOW_FIRST',
         'MBIN_NEW_USERS_NEED_APPROVAL',
         'MBIN_USE_FEDERATION_ALLOW_LIST',
+        'MBIN_AUTHORIZED_FETCH',
     ];
 
     public function testApiCannotUpdateInstanceSettingsAnonymous(): void
@@ -114,6 +115,7 @@ class InstanceSettingsUpdateApiTest extends WebTestCase
             'MBIN_SSO_SHOW_FIRST' => false,
             'MBIN_NEW_USERS_NEED_APPROVAL' => false,
             'MBIN_USE_FEDERATION_ALLOW_LIST' => false,
+            'MBIN_AUTHORIZED_FETCH' => false,
         ];
 
         $this->client->jsonRequest('PUT', '/api/instance/settings', $settings, server: ['HTTP_AUTHORIZATION' => $token]);
@@ -155,6 +157,7 @@ class InstanceSettingsUpdateApiTest extends WebTestCase
             'MBIN_SSO_SHOW_FIRST' => true,
             'MBIN_NEW_USERS_NEED_APPROVAL' => false,
             'MBIN_USE_FEDERATION_ALLOW_LIST' => false,
+            'MBIN_AUTHORIZED_FETCH' => false,
         ];
 
         $this->client->jsonRequest('PUT', '/api/instance/settings', $settings, server: ['HTTP_AUTHORIZATION' => $token]);
