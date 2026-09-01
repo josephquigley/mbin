@@ -137,9 +137,9 @@ class SignatureValidatorGetTest extends TestCase
     /**
      * @return array<string, string[]>
      */
-    private function signedHeaders(string $requestTarget, string $signedHeaders): array
+    private function signedHeaders(string $requestTarget, string $signedHeaders, ?string $date = null): array
     {
-        $date = gmdate('D, d M Y H:i:s \G\M\T');
+        $date ??= gmdate('D, d M Y H:i:s \G\M\T');
 
         $values = [
             '(request-target)' => $requestTarget,
@@ -166,6 +166,80 @@ class SignatureValidatorGetTest extends TestCase
                 base64_encode($signature)
             )],
         ];
+    }
+
+    // ─── Minimal header sets ────────────────────────────────────────────
+    //
+    // These tests PIN CURRENT BEHAVIOUR. They record what this code accepts
+    // today; none of them asserts that accepting it is correct.
+    //
+    // validateGetRequest() requires the Signature and Date headers to be
+    // PRESENT on the request, but verifyGetSignature() builds its signing
+    // string from whatever the signature's own headers="..." list names. It
+    // imposes no minimum, so a peer may send a Date header and decline to sign
+    // it, and may decline to sign Host. Neither is covered by any other test,
+    // which is how the gap stayed invisible.
+    //
+    // The practical consequence is that a captured signed GET can be replayed:
+    // nothing binds the signature to a moment (no skew check, see the @todo in
+    // validateGetRequest) or, when Host is unsigned, to this host.
+    //
+    // This is NOT a regression introduced by authorized fetch. The existing
+    // POST path in validate() has the same properties, which that @todo says
+    // outright. Requiring a minimum covered set and a clock-skew window is a
+    // deliberate change with an interoperability cost, and belongs in its own
+    // patch. If that patch lands, these tests SHOULD fail: their failure is the
+    // signal to rewrite them, not to relax the new rule.
+
+    /**
+     * A signature covering only (request-target) is accepted, provided a Date
+     * header is present on the request. Neither Host nor Date is signed.
+     */
+    public function testItAcceptsASignatureCoveringOnlyTheRequestTarget(): void
+    {
+        $headers = $this->signedHeaders('get /u/user', '(request-target)');
+
+        $sut = $this->validator(self::$publicKeyPem);
+
+        self::assertSame(self::ACTOR, $sut->validateGetRequest('/u/user', $headers));
+    }
+
+    /**
+     * Host signed, Date present but unsigned. Accepted.
+     */
+    public function testItAcceptsASignatureThatDoesNotCoverTheDateHeader(): void
+    {
+        $headers = $this->signedHeaders('get /u/user', '(request-target) host');
+
+        $sut = $this->validator(self::$publicKeyPem);
+
+        self::assertSame(self::ACTOR, $sut->validateGetRequest('/u/user', $headers));
+    }
+
+    /**
+     * Date signed, Host neither signed nor required. Accepted.
+     */
+    public function testItAcceptsASignatureThatDoesNotCoverTheHostHeader(): void
+    {
+        $headers = $this->signedHeaders('get /u/user', '(request-target) date');
+
+        $sut = $this->validator(self::$publicKeyPem);
+
+        self::assertSame(self::ACTOR, $sut->validateGetRequest('/u/user', $headers));
+    }
+
+    /**
+     * A Date far in the past is accepted even when the signature covers it: the
+     * value is never compared against the clock. This is the replay window, and
+     * it is currently unbounded.
+     */
+    public function testItAcceptsAStaleDate(): void
+    {
+        $headers = $this->signedHeaders('get /u/user', '(request-target) host date', 'Tue, 01 Jan 2019 00:00:00 GMT');
+
+        $sut = $this->validator(self::$publicKeyPem);
+
+        self::assertSame(self::ACTOR, $sut->validateGetRequest('/u/user', $headers));
     }
 
     private function validator(?string $publicKeyPem): SignatureValidator
