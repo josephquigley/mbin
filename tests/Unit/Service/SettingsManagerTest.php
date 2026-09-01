@@ -68,6 +68,7 @@ class SettingsManagerTest extends WebTestCase
             mbinNewUsersNeedApproval: false,
             logger: $logger,
             mbinUseFederationAllowList: false,
+            mbinAuthorizedFetch: false,
             mbinSearchLang: 'english',
         );
 
@@ -120,6 +121,7 @@ class SettingsManagerTest extends WebTestCase
             mbinNewUsersNeedApproval: false,
             logger: $logger,
             mbinUseFederationAllowList: false,
+            mbinAuthorizedFetch: false,
             mbinSearchLang: 'english',
         );
 
