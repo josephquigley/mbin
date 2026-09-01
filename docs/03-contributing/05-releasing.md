@@ -91,8 +91,17 @@ leading `v`:
 ### 1. Bump the version
 
 Branch from `develop`, edit `mbin_version` in `config/services.yaml`, open a pull
-request into `develop`. This can ride along with the last change going into the
-release rather than being its own PR.
+request into `develop`. **Give the bump its own pull request**, changing nothing
+else.
+
+The bump is what triggers the release, so it should be an explicit, reviewable
+act rather than a line buried in a feature pull request. Keeping it separate also
+makes the trigger easy to find in history when a release misfires, and stops a
+half-merged feature branch from leaving the version describing something other
+than what is on `develop`.
+
+Merging it releases nothing on its own: the release job is gated on
+`refs/heads/main` before it ever reads the version. The release happens in step 3.
 
 ### 2. Open the release pull request
 
