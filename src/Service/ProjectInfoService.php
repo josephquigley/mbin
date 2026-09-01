@@ -9,14 +9,17 @@ namespace App\Service;
  */
 class ProjectInfoService
 {
-    // If updating version, please also update http client UA in [/config/packages/framework.yaml]
-    private const VERSION = '1.10.1'; // TODO: Retrieve the version from git tags or getenv()?
     private const NAME = 'mbin';
     private const CANONICAL_NAME = 'Mbin';
-    private const REPOSITORY_URL = 'https://github.com/MbinOrg/mbin';
+    // FORK DIVERGENCE — do not offer this upstream. nodeinfo 2.1 exposes this
+    // as software.repository and the REST API as softwareRepository: it is the
+    // field whose job is to say which codebase is running. Pointing it at
+    // upstream while running patched code misidentifies the instance.
+    private const REPOSITORY_URL = 'https://github.com/josephquigley/mbin-paisans';
 
     public function __construct(
         private readonly string $kbinDomain,
+        private readonly string $mbinVersion,
     ) {
     }
 
@@ -27,7 +30,7 @@ class ProjectInfoService
      */
     public function getVersion(): string
     {
-        return self::VERSION;
+        return $this->mbinVersion;
     }
 
     /**

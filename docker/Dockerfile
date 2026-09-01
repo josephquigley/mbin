@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	gettext \
 	git \
 	gosu \
+	libimage-exiftool-perl \
     procps \
 	&& rm -rf /var/lib/apt/lists/*
 

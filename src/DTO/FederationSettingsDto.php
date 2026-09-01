@@ -13,6 +13,7 @@ class FederationSettingsDto implements \JsonSerializable
         public bool $federationEnabled,
         public bool $federationUsesAllowList,
         public bool $federationPageEnabled,
+        public bool $authorizedFetch,
     ) {
     }
 
@@ -22,6 +23,7 @@ class FederationSettingsDto implements \JsonSerializable
             'federationEnabled' => $this->federationEnabled,
             'federationUsesAllowList' => $this->federationUsesAllowList,
             'federationPageEnabled' => $this->federationPageEnabled,
+            'authorizedFetch' => $this->authorizedFetch,
         ];
     }
 }

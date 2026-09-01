@@ -11,6 +11,7 @@ on:
       - dev/new_features
     tags:
       - 'v*'
+      - '!v*\+paisans'   # fork releases: see build-and-publish-fork-image.yaml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -321,7 +322,8 @@ jobs:
     runs-on: ubuntu-latest
     # Let's only run this on branches and tagged releases only
     # Because the Docker build takes quite some time.
-    if: github.event_name != 'pull_request'
+    # Fork: skip on forks, build-and-publish-fork-image.yaml publishes there instead.
+    if: github.event_name != 'pull_request' && github.repository == 'MbinOrg/mbin'
     permissions:
       contents: write
       packages: write

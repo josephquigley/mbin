@@ -21,6 +21,8 @@ class FollowHandlerTest extends ActivityPubFunctionalTestCase
     private array $userFollowUser;
     private array $undoUserFollowUser;
     private string $followUserApId;
+    /** @var array<string, mixed> */
+    private array $magazineRejectUserFollow;
 
     public function setUpRemoteEntities(): void
     {
@@ -69,6 +71,36 @@ class FollowHandlerTest extends ActivityPubFunctionalTestCase
         $this->entitiesToRemoveAfterSetup[] = $undoFollowActivity;
         $this->entitiesToRemoveAfterSetup[] = $followActivity;
         $this->entitiesToRemoveAfterSetup[] = $followUser;
+    }
+
+    public function setUpLateRemoteEntities(): void
+    {
+        $followActivity = $this->followWrapper->build($this->localUser, $this->remoteMagazine);
+        $follow = $this->activityJsonBuilder->buildActivityJson($followActivity);
+        // the activity is built while the remote domain is active, so the local actor has to be rewritten by hand
+        $follow['actor'] = "https://$this->prev/u/{$this->localUser->username}";
+        $this->testingApHttpClient->activityObjects[$follow['id']] = $follow;
+
+        $rejectActivity = $this->followResponseWrapper->build($this->remoteMagazine, $followActivity, isReject: true);
+        $this->magazineRejectUserFollow = $this->activityJsonBuilder->buildActivityJson($rejectActivity);
+        $this->magazineRejectUserFollow['object'] = $follow;
+        $this->magazineRejectUserFollow['to'] = [$follow['actor']];
+        $this->testingApHttpClient->activityObjects[$this->magazineRejectUserFollow['id']] = $this->magazineRejectUserFollow;
+
+        $this->entitiesToRemoveAfterSetup[] = $rejectActivity;
+        $this->entitiesToRemoveAfterSetup[] = $followActivity;
+    }
+
+    public function testMagazineRejectsUserFollow(): void
+    {
+        $this->magazineManager->subscribe($this->remoteMagazine, $this->localUser);
+        $this->entityManager->refresh($this->remoteMagazine);
+        self::assertNotNull($this->magazineSubscriptionRepository->findOneBy(['user' => $this->localUser, 'magazine' => $this->remoteMagazine]));
+
+        $this->bus->dispatch(new ActivityMessage(json_encode($this->magazineRejectUserFollow)));
+
+        $this->entityManager->refresh($this->remoteMagazine);
+        self::assertNull($this->magazineSubscriptionRepository->findOneBy(['user' => $this->localUser, 'magazine' => $this->remoteMagazine]));
     }
 
     public function testUserFollowUser(): void

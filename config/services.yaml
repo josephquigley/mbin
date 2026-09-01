@@ -12,6 +12,17 @@ framework:
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # The single source of truth for the project version. Deliberately NOT an
+    # env var: the version describes the code that is running, so an instance
+    # admin must not be able to change what it reports to peers and clients.
+    # FORK DIVERGENCE — do not offer this upstream.
+    # '+paisans' is SemVer build metadata (spec item 10): ignored for version
+    # precedence, carried purely to identify the build. It says this is Mbin
+    # 1.11.0 as modified for paisans.community, which is what a peer reading
+    # our nodeinfo or our request log needs to know. software.name stays
+    # 'mbin' on purpose: peers record and branch on it, so a novel name would
+    # make us unrecognised software rather than honest software.
+    mbin_version: '1.11.0+paisans'
     kbin_domain: '%env(KBIN_DOMAIN)%'
     kbin_title: '%env(KBIN_TITLE)%'
     kbin_meta_title: '%env(KBIN_META_TITLE)%'
@@ -125,6 +136,7 @@ parameters:
 
     mbin_new_users_need_approval: '%env(bool:default::MBIN_NEW_USERS_NEED_APPROVAL)%'
     mbin_use_federation_allow_list: '%env(bool:default::MBIN_USE_FEDERATION_ALLOW_LIST)%'
+    mbin_authorized_fetch: '%env(bool:default::MBIN_AUTHORIZED_FETCH)%'
 
     mbin_search_lang_default: 'english'
     mbin_search_lang: '%env(string:default:mbin_search_lang_default:MBIN_SEARCH_LANGUAGE)%'
@@ -146,6 +158,7 @@ services:
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
         bind:
             $kbinDomain: '%kbin_domain%'
+            $mbinVersion: '%mbin_version%'
             $html5Validation: '%html5_validation%'
             $uploadedAssetsBaseUrl: '%uploads_base_url%'
             $mercurePublicUrl: '%mercure_public_url%'
@@ -219,6 +232,7 @@ services:
             $mbinDownvotesMode: '%mbin_downvotes_mode%'
             $mbinNewUsersNeedApproval: '%mbin_new_users_need_approval%'
             $mbinUseFederationAllowList: '%mbin_use_federation_allow_list%'
+            $mbinAuthorizedFetch: '%mbin_authorized_fetch%'
             $mbinSearchLang: '%mbin_search_lang%'
 
     # Markdown

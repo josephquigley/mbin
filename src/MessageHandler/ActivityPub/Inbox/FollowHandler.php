@@ -137,9 +137,19 @@ class FollowHandler extends MbinMessageHandler
         }
     }
 
-    private function handleReject(User $actor, User|Magazine|null $object): void
+    private function handleReject(User|Magazine $actor, User|Magazine|null $object): void
     {
         if (!empty($object)) {
+            if ($actor instanceof Magazine) {
+                // the rejecting actor is in "actor" and the original follower is in "object.actor", so a magazine
+                // rejecting a follow means the subscription that was created optimistically has to be undone
+                if ($object instanceof User) {
+                    $this->magazineManager->unsubscribe($actor, $object);
+                }
+
+                return;
+            }
+
             match (true) {
                 $object instanceof User => $this->userManager->rejectFollow($object, $actor),
                 $object instanceof Magazine => $this->magazineManager->unsubscribe($object, $actor),

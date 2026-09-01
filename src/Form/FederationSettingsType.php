@@ -23,6 +23,13 @@ class FederationSettingsType extends AbstractType
                 ],
             )
             ->add('federationPageEnabled', CheckboxType::class, ['required' => false])
+            ->add('authorizedFetch',
+                CheckboxType::class,
+                [
+                    'required' => false,
+                    'help' => 'federation_authorized_fetch_help',
+                ],
+            )
             ->add('submit', SubmitType::class)
         ;
     }

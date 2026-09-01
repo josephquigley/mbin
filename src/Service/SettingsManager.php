@@ -51,6 +51,7 @@ class SettingsManager
         private readonly bool $mbinNewUsersNeedApproval,
         private readonly LoggerInterface $logger,
         private readonly bool $mbinUseFederationAllowList,
+        private readonly bool $mbinAuthorizedFetch,
         private readonly string $mbinSearchLang,
     ) {
         if (!self::$dto || 'test' === $this->kernel->getEnvironment()) {
@@ -102,6 +103,7 @@ class SettingsManager
                 $this->find($results, 'MBIN_DOWNVOTES_MODE') ?? $this->mbinDownvotesMode->value,
                 $newUsersNeedApprovalEdited,
                 $this->find($results, 'MBIN_USE_FEDERATION_ALLOW_LIST', FILTER_VALIDATE_BOOLEAN) ?? $this->mbinUseFederationAllowList,
+                $this->find($results, 'MBIN_AUTHORIZED_FETCH', FILTER_VALIDATE_BOOLEAN) ?? $this->mbinAuthorizedFetch,
             );
             $this->instanceDto = $dto;
         } else {
@@ -205,6 +207,17 @@ class SettingsManager
     public function getUseAllowList(): bool
     {
         return $this->getDto()->MBIN_USE_FEDERATION_ALLOW_LIST;
+    }
+
+    /**
+     * Whether inbound ActivityPub GET requests must carry a valid HTTP signature.
+     *
+     * Off by default: turning it on refuses to serve ActivityPub to peers that
+     * do not sign their GET requests.
+     */
+    public function isAuthorizedFetchEnabled(): bool
+    {
+        return $this->getDto()->MBIN_AUTHORIZED_FETCH;
     }
 
     public function getAllowedInstances(): array

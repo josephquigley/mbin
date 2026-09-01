@@ -2,8 +2,18 @@
 
 It is possible to configure Mbin to remove meta-data from images.
 
-To use this feature, install `exiftool` (`libimage-exiftool-perl` package for Ubuntu/Debian)
-and make sure `exiftool` executable exist and and visible in PATH
+**Docker deployments need nothing:** the image ships `exiftool`
+(`libimage-exiftool-perl`), so the setting below is all that is required.
+
+On a **bare metal** install, install `exiftool` yourself
+(`libimage-exiftool-perl` on Ubuntu/Debian) and make sure the `exiftool`
+executable exists and is visible in `PATH`.
+
+If the binary is missing, `ExifCleaner` logs `exiftool binary was not found,
+nothing will be done.` at **info** level and returns. Nothing errors and
+nothing warns, so the setting below reads as configured while doing nothing at
+all: on a production log level that discards info, the only symptom is that
+uploaded images keep their metadata.
 
 Available options in `.env`:
 
