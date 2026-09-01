@@ -161,6 +161,13 @@ Unofficial magazines:
 		</tr>
 		<tr>
             <td align="center">
+                <a href="https://github.com/josephquigley">
+                    <img src="https://avatars.githubusercontent.com/u/682509?v=4" width="100;" alt="josephquigley"/>
+                    <br />
+                    <sub><b>Joseph Quigley</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/danielpervan">
                     <img src="https://avatars.githubusercontent.com/u/5121830?v=4" width="100;" alt="danielpervan"/>
                     <br />
@@ -182,13 +189,6 @@ Unofficial magazines:
                 </a>
             </td>
             <td align="center">
-                <a href="https://github.com/Ahrotahn">
-                    <img src="https://avatars.githubusercontent.com/u/40727284?v=4" width="100;" alt="Ahrotahn"/>
-                    <br />
-                    <sub><b>Ahrotahn</b></sub>
-                </a>
-            </td>
-            <td align="center">
                 <a href="https://github.com/GauthierPLM">
                     <img src="https://avatars.githubusercontent.com/u/2579741?v=4" width="100;" alt="GauthierPLM"/>
                     <br />
@@ -196,14 +196,21 @@ Unofficial magazines:
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/Ahrotahn">
+                    <img src="https://avatars.githubusercontent.com/u/40727284?v=4" width="100;" alt="Ahrotahn"/>
+                    <br />
+                    <sub><b>Ahrotahn</b></sub>
+                </a>
+            </td>
+		</tr>
+		<tr>
+            <td align="center">
                 <a href="https://github.com/CocoPoops">
                     <img src="https://avatars.githubusercontent.com/u/7891055?v=4" width="100;" alt="CocoPoops"/>
                     <br />
                     <sub><b>CocoPoops</b></sub>
                 </a>
             </td>
-		</tr>
-		<tr>
             <td align="center">
                 <a href="https://github.com/thepaperpilot">
                     <img src="https://avatars.githubusercontent.com/u/3683148?v=4" width="100;" alt="thepaperpilot"/>
@@ -239,6 +246,8 @@ Unofficial magazines:
                     <sub><b>ryanmonsen</b></sub>
                 </a>
             </td>
+		</tr>
+		<tr>
             <td align="center">
                 <a href="https://github.com/drupol">
                     <img src="https://avatars.githubusercontent.com/u/252042?v=4" width="100;" alt="drupol"/>
@@ -246,8 +255,6 @@ Unofficial magazines:
                     <sub><b>Pol Dellaiera</b></sub>
                 </a>
             </td>
-		</tr>
-		<tr>
             <td align="center">
                 <a href="https://github.com/MakaryGo">
                     <img src="https://avatars.githubusercontent.com/u/24472656?v=4" width="100;" alt="MakaryGo"/>
@@ -283,6 +290,8 @@ Unofficial magazines:
                     <sub><b>Allan Nordhøy</b></sub>
                 </a>
             </td>
+		</tr>
+		<tr>
             <td align="center">
                 <a href="https://github.com/CSDUMMI">
                     <img src="https://avatars.githubusercontent.com/u/31551856?v=4" width="100;" alt="CSDUMMI"/>
@@ -290,8 +299,6 @@ Unofficial magazines:
                     <sub><b>CSDUMMI</b></sub>
                 </a>
             </td>
-		</tr>
-		<tr>
             <td align="center">
                 <a href="https://github.com/e-michalak">
                     <img src="https://avatars.githubusercontent.com/u/236532325?v=4" width="100;" alt="e-michalak"/>
@@ -327,6 +334,8 @@ Unofficial magazines:
                     <sub><b>olorin99</b></sub>
                 </a>
             </td>
+		</tr>
+		<tr>
             <td align="center">
                 <a href="https://github.com/privacyguard">
                     <img src="https://avatars.githubusercontent.com/u/92675882?v=4" width="100;" alt="privacyguard"/>
