@@ -55,16 +55,29 @@ class NativeQueryAdapter implements AdapterInterface
 
         return $this->cache->get("native_query_count_$sqlHash-$parameterHash", function (CacheItemInterface $item) use ($sql, $parameters) {
             $count = $this->calculateNumOfResults($sql, $parameters);
-            if ($count > 25000) {
-                $item->expiresAfter(new \DateInterval('PT6H'));
-            } elseif ($count > 10000) {
-                $item->expiresAfter(new \DateInterval('PT1H'));
-            } elseif ($count > 1000) {
-                $item->expiresAfter(new \DateInterval('PT10M'));
-            }
+            $item->expiresAfter(self::ttlForCount($count));
 
             return $count;
         });
+    }
+
+    /**
+     * How long a cached result count may be served for.
+     *
+     * The tiers grow with the count because a count query gets more expensive the more rows it
+     * covers, so an expensive one is worth serving stale for longer. The smallest counts are the
+     * cheapest to recompute, and they are also the ones where staleness is visible: a feed whose
+     * count is remembered from when it held fewer items keeps reporting a maxPage that hides its
+     * later pages. So they get the shortest lifetime rather than an unlimited one.
+     */
+    public static function ttlForCount(int $count): \DateInterval
+    {
+        return match (true) {
+            $count > 25000 => new \DateInterval('PT6H'),
+            $count > 10000 => new \DateInterval('PT1H'),
+            $count > 1000 => new \DateInterval('PT10M'),
+            default => new \DateInterval('PT3M'),
+        };
     }
 
     private function calculateNumOfResults(string $sql, array $parameters): int
