@@ -15,7 +15,7 @@ class ProjectInfoService
     // as software.repository and the REST API as softwareRepository: it is the
     // field whose job is to say which codebase is running. Pointing it at
     // upstream while running patched code misidentifies the instance.
-    private const REPOSITORY_URL = 'https://github.com/josephquigley/mbin';
+    private const REPOSITORY_URL = 'https://github.com/josephquigley/mbin-paisans';
 
     public function __construct(
         private readonly string $kbinDomain,
