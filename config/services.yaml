@@ -12,6 +12,10 @@ framework:
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # The single source of truth for the project version. Deliberately NOT an
+    # env var: the version describes the code that is running, so an instance
+    # admin must not be able to change what it reports to peers and clients.
+    mbin_version: '1.10.1'
     kbin_domain: '%env(KBIN_DOMAIN)%'
     kbin_title: '%env(KBIN_TITLE)%'
     kbin_meta_title: '%env(KBIN_META_TITLE)%'
@@ -147,6 +151,7 @@ services:
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
         bind:
             $kbinDomain: '%kbin_domain%'
+            $mbinVersion: '%mbin_version%'
             $html5Validation: '%html5_validation%'
             $uploadedAssetsBaseUrl: '%uploads_base_url%'
             $mercurePublicUrl: '%mercure_public_url%'
