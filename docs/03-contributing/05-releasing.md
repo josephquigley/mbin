@@ -3,6 +3,45 @@
 This fork publishes its own releases, independently of upstream. This page is the
 procedure, for humans and for agents.
 
+## What this fork is based on
+
+The deployment line is built on **upstream's most recent stable tag**, never on
+upstream's development line.
+
+`v1.11.0+paisans` was cut from a branch tracking upstream's unreleased work. That
+carried an in-progress PDO to Redis session migration together with a `Redis`
+service that never sends `AUTH`, and every request touching a session returned
+`NOAUTH Authentication required` against a password-protected Valkey. Upstream had
+not released that work because it was not finished. We shipped it anyway.
+
+So the line is assembled as:
+
+1. Upstream's latest stable tag.
+2. Upstream's **environment, dependencies and toolchain**, taken as whole files
+   from the development line rather than cherry-picked, because `composer.lock`
+   cannot be replayed piecemeal. The full set:
+
+   ```
+   composer.json composer.lock package.json package-lock.json
+   docker/ ci/ .devcontainer/ .github/
+   tools/ .php-cs-fixer.dist.php psalm.xml
+   ```
+
+   Miss the last three and CI fails in a way that looks like a formatting error
+   but is php-cs-fixer refusing to run on a PHP version it does not support.
+
+3. Our own commits.
+
+Upstream's **behavioural** changes from the unreleased line are excluded. Adopt
+them when upstream releases them, or cherry-pick one deliberately with a reason.
+
+After importing the environment, confirm it touched no application code: nothing
+under `src/`, `config/`, `templates/`, `assets/`, `migrations/` or `translations/`.
+
+Feature branches are unaffected by all of this. They are still cut from
+`upstream-mirror`, because they are destined for upstream pull requests and must
+apply to upstream's development line.
+
 ## Versioning
 
 The version lives in exactly one place, `config/services.yaml`:
@@ -104,6 +143,11 @@ On merge, the `Build and publish fork Docker image` workflow:
    bounded to the previous fork tag.
 5. Adds the version tag to the image digest step 1 already built, rather than
    rebuilding, so the release tag and `:latest` are provably the same bits.
+
+Check the release body afterwards. The notes are read from the merged pull
+request associated with the commit, which is right for an ordinary release and
+wrong after a force-push, where an unrelated pull request can become "merged"
+simply because its commits became reachable. Fix it with `gh release edit`.
 
 Verify:
 
