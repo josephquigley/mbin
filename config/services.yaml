@@ -15,7 +15,14 @@ parameters:
     # The single source of truth for the project version. Deliberately NOT an
     # env var: the version describes the code that is running, so an instance
     # admin must not be able to change what it reports to peers and clients.
-    mbin_version: '1.10.1'
+    # FORK DIVERGENCE — do not offer this upstream.
+    # '+paisans' is SemVer build metadata (spec item 10): ignored for version
+    # precedence, carried purely to identify the build. It says this is Mbin
+    # 1.11.0 as modified for paisans.community, which is what a peer reading
+    # our nodeinfo or our request log needs to know. software.name stays
+    # 'mbin' on purpose: peers record and branch on it, so a novel name would
+    # make us unrecognised software rather than honest software.
+    mbin_version: '1.11.0+paisans'
     kbin_domain: '%env(KBIN_DOMAIN)%'
     kbin_title: '%env(KBIN_TITLE)%'
     kbin_meta_title: '%env(KBIN_META_TITLE)%'
