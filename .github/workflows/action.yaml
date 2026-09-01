@@ -11,7 +11,7 @@ on:
       - dev/new_features
     tags:
       - 'v*'
-      - '!v*+paisans'   # fork releases: see build-and-publish-fork-image.yaml
+      - '!v*\+paisans'   # fork releases: see build-and-publish-fork-image.yaml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
