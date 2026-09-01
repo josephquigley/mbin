@@ -11,7 +11,11 @@ class ProjectInfoService
 {
     private const NAME = 'mbin';
     private const CANONICAL_NAME = 'Mbin';
-    private const REPOSITORY_URL = 'https://github.com/MbinOrg/mbin';
+    // FORK DIVERGENCE — do not offer this upstream. nodeinfo 2.1 exposes this
+    // as software.repository and the REST API as softwareRepository: it is the
+    // field whose job is to say which codebase is running. Pointing it at
+    // upstream while running patched code misidentifies the instance.
+    private const REPOSITORY_URL = 'https://github.com/josephquigley/mbin';
 
     public function __construct(
         private readonly string $kbinDomain,
