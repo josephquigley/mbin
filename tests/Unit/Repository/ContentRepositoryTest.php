@@ -73,6 +73,14 @@ class ContentRepositoryTest extends TestCase
         self::assertFalse(ContentRepository::canSkipCountQuery($criteria));
     }
 
+    public function testLanguageFilteredCriteriaDoNotSkipTheCountQuery(): void
+    {
+        $criteria = $this->criteria();
+        $criteria->addLanguage('de');
+
+        self::assertFalse(ContentRepository::canSkipCountQuery($criteria));
+    }
+
     public function testTimeLimitedCriteriaDoNotSkipTheCountQuery(): void
     {
         $criteria = $this->criteria();
