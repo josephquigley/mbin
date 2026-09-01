@@ -97,7 +97,13 @@ class AuthorizedFetchSubscriber implements EventSubscriberInterface
             // verified at this point, which only lets a caller choose a host we will not
             // contact. Reading anything still requires the signature below to verify.
             if ($this->settingsManager->isBannedInstance($keyId)) {
-                $this->logger->info('[AuthorizedFetchSubscriber] Refusing ActivityPub GET of {route} from a non-federated instance: {keyId}', [
+                // Warning, not info: the production Monolog stack (config/packages/
+                // monolog.yaml, when@prod) is fingers_crossed with action_level: error
+                // over handlers set to level: warning, so an info line is discarded
+                // unless some unrelated error trips the buffer in the same request. A
+                // refusal returns 401 cleanly and is not an error, so at info level it
+                // is never recorded at all and the admin sees a bare 401.
+                $this->logger->warning('[AuthorizedFetchSubscriber] Refusing ActivityPub GET of {route} from a non-federated instance: {keyId}', [
                     'route' => $route,
                     'keyId' => $keyId,
                 ]);
@@ -109,7 +115,9 @@ class AuthorizedFetchSubscriber implements EventSubscriberInterface
 
             $actorUrl = $this->signatureValidator->validateGetRequest($request->getRequestUri(), $request->headers->all());
         } catch (\Exception $e) {
-            $this->logger->info('[AuthorizedFetchSubscriber] Refusing unverified ActivityPub GET of {route}: {reason}', [
+            // Warning for the same reason as the refusal above: an unverifiable
+            // signature is the other case an admin needs to see in the log.
+            $this->logger->warning('[AuthorizedFetchSubscriber] Refusing unverified ActivityPub GET of {route}: {reason}', [
                 'route' => $route,
                 'reason' => $e->getMessage(),
             ]);
