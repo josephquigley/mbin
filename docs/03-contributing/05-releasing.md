@@ -144,11 +144,6 @@ On merge, the `Build and publish fork Docker image` workflow:
 5. Adds the version tag to the image digest step 1 already built, rather than
    rebuilding, so the release tag and `:latest` are provably the same bits.
 
-Check the release body afterwards. The notes are read from the merged pull
-request associated with the commit, which is right for an ordinary release and
-wrong after a force-push, where an unrelated pull request can become "merged"
-simply because its commits became reachable. Fix it with `gh release edit`.
-
 Verify:
 
 ```sh
