@@ -43,7 +43,7 @@ class ContentRepository
         $conn = $this->entityManager->getConnection();
 
         $numResults = null;
-        if ('test' !== $this->kernel->getEnvironment() && !$criteria->magazine && !$criteria->moderated && !$criteria->favourite && Criteria::TIME_ALL === $criteria->time && Criteria::AP_ALL === $criteria->federation && 'all' === $criteria->type) {
+        if ('test' !== $this->kernel->getEnvironment() && self::canSkipCountQuery($criteria)) {
             // pre-set the results to 1000 pages for queries not very limited by the parameters so the count query is not being executed
             $numResults = 1000 * ($criteria->perPage ?? self::PER_PAGE);
         }
@@ -52,6 +52,29 @@ class ContentRepository
         $fanta->setCurrentPage($criteria->page);
 
         return $fanta;
+    }
+
+    /**
+     * Whether the criteria are broad enough that the number of results can be assumed to be large,
+     * which lets the count query be skipped.
+     *
+     * Any criteria narrowing the feed to one magazine, user, domain or tag must be rejected here.
+     * Those feeds can hold a handful of entries or none at all, and assuming 1000 pages makes the
+     * API advertise a maxPage that does not exist: clients then walk hundreds of empty pages until
+     * they hit the rate limiter.
+     */
+    public static function canSkipCountQuery(Criteria $criteria): bool
+    {
+        return !$criteria->magazine
+            && !$criteria->moderated
+            && !$criteria->favourite
+            && !$criteria->subscribed
+            && !$criteria->user
+            && !$criteria->domain
+            && !$criteria->tag
+            && Criteria::TIME_ALL === $criteria->time
+            && Criteria::AP_ALL === $criteria->federation
+            && 'all' === $criteria->type;
     }
 
     /**
