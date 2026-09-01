@@ -96,3 +96,108 @@ jobs:
 
           docker buildx imagetools create -t "${IMAGE}:${version}" "$source"
           docker buildx imagetools inspect "${IMAGE}:${version}"
+
+  # A merge to main that changes mbin_version is a release. The version file is
+  # the single source of truth, so the tag cannot disagree with what the running
+  # app reports. Tags pushed with GITHUB_TOKEN do not trigger workflows, so this
+  # job retags the image itself rather than relying on the retag job above.
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Work out whether this is a new version
+        id: version
+        run: |
+          set -euo pipefail
+          version=$(sed -nE "s/^[[:space:]]*mbin_version:[[:space:]]*'([^']+)'.*/\1/p" \
+            config/services.yaml | head -1)
+
+          if [ -z "$version" ]; then
+            echo "::error::Could not read mbin_version from config/services.yaml"
+            exit 1
+          fi
+
+          tag="v${version}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "Tag ${tag} already exists, nothing to release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Without this, the notes generator falls back to the newest tag it can
+          # find, which is one of the 39 upstream release tags this fork carries,
+          # and the notes then cover every upstream change too.
+          previous=$(git tag --list '*+paisans' --sort=-creatordate | head -1)
+
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "docker_tag=${version//+/-}" >> "$GITHUB_OUTPUT"
+          echo "previous=${previous}" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push the release tag
+        if: steps.version.outputs.release == 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Publish the GitHub release
+        if: steps.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+        run: |
+          set -euo pipefail
+
+          # The operator-facing notes are written by hand in the release PR. The
+          # list of what changed is generated from the commit range, so work
+          # merged into develop cannot go unmentioned if the PR body forgets it.
+          body=$(gh api "repos/${REPO}/commits/${GITHUB_SHA}/pulls" \
+            --jq 'first(.[] | select(.merged_at != null) | .body // "") // ""')
+
+          if [ -z "$body" ]; then
+            body="No operator notes were provided in the release pull request."
+          fi
+
+          gh api "repos/${REPO}/releases" \
+            -f "tag_name=${TAG}" \
+            -f "name=${TAG}" \
+            -f "body=${body}" \
+            -F generate_release_notes=true \
+            ${PREVIOUS:+-f "previous_tag_name=${PREVIOUS}"} \
+            --jq '.html_url'
+
+      - name: Login to ghcr
+        if: steps.version.outputs.release == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag the image that the build job already published
+        if: steps.version.outputs.release == 'true'
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          DOCKER_TAG: ${{ steps.version.outputs.docker_tag }}
+        run: |
+          set -euo pipefail
+          source="${IMAGE}:sha-${GITHUB_SHA::7}"
+          docker buildx imagetools create -t "${IMAGE}:${DOCKER_TAG}" "$source"
+          docker buildx imagetools inspect "${IMAGE}:${DOCKER_TAG}"
