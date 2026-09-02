@@ -145,26 +145,26 @@ Unofficial magazines:
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/josephquigley">
+                    <img src="https://avatars.githubusercontent.com/u/682509?v=4" width="100;" alt="josephquigley"/>
+                    <br />
+                    <sub><b>Joseph Quigley</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/kkoyung">
                     <img src="https://avatars.githubusercontent.com/u/11942650?v=4" width="100;" alt="kkoyung"/>
                     <br />
                     <sub><b>Kingsley Yung</b></sub>
                 </a>
             </td>
+		</tr>
+		<tr>
             <td align="center">
                 <a href="https://github.com/TheVillageGuy">
                     <img src="https://avatars.githubusercontent.com/u/47496248?v=4" width="100;" alt="TheVillageGuy"/>
                     <br />
                     <sub><b>TheVillageGuy</b></sub>
-                </a>
-            </td>
-		</tr>
-		<tr>
-            <td align="center">
-                <a href="https://github.com/josephquigley">
-                    <img src="https://avatars.githubusercontent.com/u/682509?v=4" width="100;" alt="josephquigley"/>
-                    <br />
-                    <sub><b>Joseph Quigley</b></sub>
                 </a>
             </td>
             <td align="center">
