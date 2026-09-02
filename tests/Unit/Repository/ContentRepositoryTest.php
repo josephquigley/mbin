@@ -105,6 +105,69 @@ class ContentRepositoryTest extends TestCase
         self::assertFalse(ContentRepository::canSkipCountQuery($criteria));
     }
 
+    public function testAnEstimateAboveTheAssumedCountAllowsTheSkip(): void
+    {
+        self::assertTrue(ContentRepository::estimateAllowsSkip(25000, 25000));
+        self::assertTrue(ContentRepository::estimateAllowsSkip(40000, 25000));
+    }
+
+    public function testAnEstimateBelowTheAssumedCountBlocksTheSkip(): void
+    {
+        self::assertFalse(ContentRepository::estimateAllowsSkip(24999, 25000));
+        self::assertFalse(ContentRepository::estimateAllowsSkip(4, 25000));
+        self::assertFalse(ContentRepository::estimateAllowsSkip(0, 25000));
+    }
+
+    public function testAnUnknownEstimateBlocksTheSkip(): void
+    {
+        // reltuples is -1 on a table that has never been analyzed, and the
+        // lookup returns null when it cannot be trusted at all. Neither may be
+        // read as "large": an unanalyzed table is the state a fresh instance
+        // is in, which is exactly where the assumed count is most wrong.
+        self::assertFalse(ContentRepository::estimateAllowsSkip(null, 25000));
+    }
+
+    public function testFeedTablesFollowTheUnionForCombinedContent(): void
+    {
+        $criteria = $this->criteria();
+        $criteria->content = Criteria::CONTENT_COMBINED;
+        $criteria->includeBoosts = false;
+
+        self::assertSame(['entry', 'post'], ContentRepository::feedTables($criteria));
+    }
+
+    public function testFeedTablesIncludeCommentsWhenBoostsAreIncluded(): void
+    {
+        $criteria = $this->criteria();
+        $criteria->content = Criteria::CONTENT_COMBINED;
+        $criteria->includeBoosts = true;
+
+        self::assertSame(
+            ['entry', 'post', 'entry_comment', 'post_comment'],
+            ContentRepository::feedTables($criteria)
+        );
+    }
+
+    public function testFeedTablesForThreadsAreEntriesOnly(): void
+    {
+        $criteria = $this->criteria();
+        $criteria->content = Criteria::CONTENT_THREADS;
+        $criteria->includeBoosts = true;
+
+        self::assertSame(['entry'], ContentRepository::feedTables($criteria));
+    }
+
+    public function testFeedTablesForMicroblogFollowTheBoostSetting(): void
+    {
+        $criteria = $this->criteria();
+        $criteria->content = Criteria::CONTENT_MICROBLOG;
+        $criteria->includeBoosts = false;
+        self::assertSame(['post'], ContentRepository::feedTables($criteria));
+
+        $criteria->includeBoosts = true;
+        self::assertSame(['post', 'post_comment'], ContentRepository::feedTables($criteria));
+    }
+
     private function criteria(): Criteria
     {
         return new class(1) extends Criteria {
