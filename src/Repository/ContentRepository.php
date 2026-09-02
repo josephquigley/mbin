@@ -18,6 +18,7 @@ use App\Utils\SqlHelpers;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Pagerfanta\PagerfantaInterface;
+use Psr\Cache\CacheItemInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\KernelInterface;
@@ -43,9 +44,13 @@ class ContentRepository
         $conn = $this->entityManager->getConnection();
 
         $numResults = null;
-        if ('test' !== $this->kernel->getEnvironment() && self::canSkipCountQuery($criteria)) {
+        $assumedResults = 1000 * ($criteria->perPage ?? self::PER_PAGE);
+        if ('test' !== $this->kernel->getEnvironment()
+            && self::canSkipCountQuery($criteria)
+            && self::estimateAllowsSkip($this->estimatedFeedRows($criteria), $assumedResults)
+        ) {
             // pre-set the results to 1000 pages for queries not very limited by the parameters so the count query is not being executed
-            $numResults = 1000 * ($criteria->perPage ?? self::PER_PAGE);
+            $numResults = $assumedResults;
         }
         $fanta = new Pagerfanta(new NativeQueryAdapter($conn, $query['sql'], $query['parameters'], numOfResults: $numResults, transformer: $this->contentPopulationTransformer, cache: $this->cache));
         $fanta->setMaxPerPage($criteria->perPage ?? self::PER_PAGE);
@@ -76,6 +81,101 @@ class ContentRepository
             && Criteria::TIME_ALL === $criteria->time
             && Criteria::AP_ALL === $criteria->federation
             && 'all' === $criteria->type;
+    }
+
+    /**
+     * Whether the estimated size of the tables behind a feed is large enough for the assumed
+     * result count to be plausible.
+     *
+     * The assumed count only holds where the corpus really is bigger than it. On an instance
+     * holding a handful of items the criteria can be as broad as they like and the feed is still
+     * one page, so breadth alone is not enough to justify skipping the count: the API would
+     * advertise a maxPage that does not exist and clients would walk hundreds of empty pages into
+     * the rate limiter.
+     *
+     * A null estimate means the size is not known, which must not be read as "large" — an
+     * unanalyzed table is the state a fresh instance is in, and that is exactly where the assumed
+     * count is most wrong.
+     */
+    public static function estimateAllowsSkip(?int $estimatedRows, int $assumedResults): bool
+    {
+        return null !== $estimatedRows && $estimatedRows >= $assumedResults;
+    }
+
+    /**
+     * The tables the feed's UNION reads, which are the ones whose size decides whether the count
+     * can be skipped. Mirrors the union assembled in getQueryAndParameters().
+     *
+     * @return string[]
+     */
+    public static function feedTables(Criteria $criteria): array
+    {
+        $includeEntries = Criteria::CONTENT_COMBINED === $criteria->content || Criteria::CONTENT_THREADS === $criteria->content;
+        $includeEntryComments = Criteria::CONTENT_COMBINED === $criteria->content && $criteria->includeBoosts;
+        $includePosts = Criteria::CONTENT_COMBINED === $criteria->content || Criteria::CONTENT_MICROBLOG === $criteria->content;
+        $includePostComments = $includePosts && $criteria->includeBoosts;
+
+        $tables = [];
+        if ($includeEntries) {
+            $tables[] = 'entry';
+        }
+        if ($includePosts) {
+            $tables[] = 'post';
+        }
+        if ($includeEntryComments) {
+            $tables[] = 'entry_comment';
+        }
+        if ($includePostComments) {
+            $tables[] = 'post_comment';
+        }
+
+        return $tables;
+    }
+
+    /**
+     * A cheap upper bound on how many rows a feed can possibly return, from PostgreSQL's own
+     * planner statistics rather than a scan: pg_class.reltuples is maintained by ANALYZE and reads
+     * in constant time, where the count it stands in for is O(n log n) over the whole corpus.
+     *
+     * It is an upper bound and deliberately ignores every filter the feed applies, because its
+     * only job is to answer "could this feed have that many rows at all".
+     *
+     * Returns null when the answer cannot be trusted: reltuples is -1 on a table that has never
+     * been analyzed, and any database error (a non-PostgreSQL platform included) leaves the size
+     * unknown. Callers must treat null as "do the real count".
+     */
+    private function estimatedFeedRows(Criteria $criteria): ?int
+    {
+        $tables = self::feedTables($criteria);
+        if (0 === \sizeof($tables)) {
+            return null;
+        }
+
+        return $this->cache->get('feed_row_estimate_'.hash('sha256', join(',', $tables)), function (CacheItemInterface $item) use ($tables): ?int {
+            $item->expiresAfter(new \DateInterval('PT5M'));
+
+            $total = 0;
+            foreach ($tables as $table) {
+                try {
+                    $estimate = $this->entityManager->getConnection()
+                        ->executeQuery('SELECT reltuples FROM pg_class WHERE oid = to_regclass(:table)', ['table' => $table])
+                        ->fetchOne();
+                } catch (\Throwable $e) {
+                    $this->logger->debug('could not estimate the size of {table}: {error}', ['table' => $table, 'error' => $e->getMessage()]);
+
+                    return null;
+                }
+
+                // false is "no such table", and a negative value is PostgreSQL's "never analyzed".
+                if (false === $estimate || null === $estimate || (float) $estimate < 0) {
+                    return null;
+                }
+
+                $total += (int) $estimate;
+            }
+
+            return $total;
+        });
     }
 
     /**
