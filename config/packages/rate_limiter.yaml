@@ -70,6 +70,11 @@ framework:
       policy: 'sliding_window'
       limit: 20
       interval: '10 minutes'
+    # 3 magazines every 6 hours (same rate as normal user)
+    api_magazine:
+      policy: 'fixed_window'
+      limit: 3
+      interval: '360 minutes'
     # 2 notification reads/updates/deletes per second, bursting up to 240
     api_notification:
       policy: 'sliding_window'
