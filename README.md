@@ -131,6 +131,13 @@ Unofficial magazines:
                 </a>
             </td>
             <td align="center">
+                <a href="https://github.com/josephquigley">
+                    <img src="https://avatars.githubusercontent.com/u/682509?v=4" width="100;" alt="josephquigley"/>
+                    <br />
+                    <sub><b>Joseph Quigley</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/blued-gear">
                     <img src="https://avatars.githubusercontent.com/u/164888202?v=4" width="100;" alt="blued-gear"/>
                     <br />
@@ -142,13 +149,6 @@ Unofficial magazines:
                     <img src="https://avatars.githubusercontent.com/u/12083338?v=4" width="100;" alt="simonrcodrington"/>
                     <br />
                     <sub><b>Simon Codrington</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/josephquigley">
-                    <img src="https://avatars.githubusercontent.com/u/682509?v=4" width="100;" alt="josephquigley"/>
-                    <br />
-                    <sub><b>Joseph Quigley</b></sub>
                 </a>
             </td>
             <td align="center">
