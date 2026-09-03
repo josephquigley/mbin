@@ -99,9 +99,14 @@
   .dropdown__menu {
     padding: 1.5rem;
     left: 50%;
-    top: auto;
-    bottom: calc(100% + 1rem);
-    z-index: 5;
+    // Opens downwards, which is the .dropdown__menu default. It used to open
+    // upwards (top: auto; bottom: calc(100% + 1rem)), and on these forms the
+    // control sits directly under the navigation bar, so the dialog opened
+    // into #header and its top was cut off. No z-index can rescue it there:
+    // #middle is position: relative with z-index: 5 and so is a stacking
+    // context, while #header is z-index: 10 alongside it, which means nothing
+    // inside #middle can ever paint above the bar. The z-index: 5 that used to
+    // sit here was lost for the same reason, so it is gone too.
 
     @include b.media-breakpoint-down(md) {
       padding: 1rem;
