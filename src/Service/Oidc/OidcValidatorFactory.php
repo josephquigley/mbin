@@ -27,8 +27,8 @@ class OidcValidatorFactory
         private readonly ClientInterface $httpClient,
         private readonly RequestFactoryInterface $requestFactory,
         private readonly CacheItemPoolInterface $cache,
-        private readonly string $clientId,
-        private readonly string $issuer,
+        private readonly ?string $clientId,
+        private readonly ?string $issuer,
     ) {
     }
 
@@ -48,6 +48,9 @@ class OidcValidatorFactory
             true,
         );
 
-        return new OidcTokenValidator($keySetResolver, $this->issuer, $this->clientId);
+        // An unset environment variable resolves to null rather than to an
+        // empty string. Nothing here can succeed without them, and failing on
+        // the claim check gives a clearer log line than a type error would.
+        return new OidcTokenValidator($keySetResolver, (string) $this->issuer, (string) $this->clientId);
     }
 }
