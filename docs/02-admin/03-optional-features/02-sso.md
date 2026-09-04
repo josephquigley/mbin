@@ -188,8 +188,13 @@ gives a provider anywhere to publish its own name or logo (`client_name` and
 `logo_uri` are client metadata, describing your application to the provider,
 not the other way round), so this has to be configuration.
 
-The icon is a different matter, and Mbin guesses. It fetches
-`{issuer}/favicon.ico` once, caches it for a day, and inlines it on the button.
+The icon is a different matter, and Mbin goes looking. It tries
+`{issuer}/favicon.ico`, then the `<link rel="icon">` of the issuer's own home
+page, caches what it finds for a day, and inlines it on the button. The second
+attempt matters more than it sounds: a single-page provider often serves its
+application shell for any unknown path, so `/favicon.ico` answers 200 with HTML
+and no icon while the shell names the real one. A declared icon is only
+followed when it stays on the issuer's own origin.
 The image is embedded rather than linked, so rendering the login page makes no
 request to your provider and it works when the provider is reachable from the
 Mbin container but not from a member's browser. Anything that is not a small
