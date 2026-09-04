@@ -143,6 +143,16 @@ oauth_authentik_verify:
   path: /oauth/authentik/verify
   methods: [ GET ]
 
+oauth_oidc_connect:
+  controller: App\Controller\Security\OidcController::connect
+  path: /oauth/oidc/connect
+  methods: [ GET ]
+
+oauth_oidc_verify:
+  controller: App\Controller\Security\OidcController::verify
+  path: /oauth/oidc/verify
+  methods: [ GET ]
+
 oauth_create_client:
   controller: App\Controller\Api\OAuth2\CreateClientApi
   path: /api/client
