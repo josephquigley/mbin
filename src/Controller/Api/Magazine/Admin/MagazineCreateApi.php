@@ -8,6 +8,7 @@ use App\Controller\Api\Magazine\MagazineBaseApi;
 use App\Controller\Traits\PrivateContentTrait;
 use App\DTO\MagazineRequestDto;
 use App\DTO\MagazineResponseDto;
+use App\Exception\MagazineNameInvalidException;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use Nelmio\ApiDocBundle\Attribute\Security;
 use OpenApi\Attributes as OA;
@@ -28,6 +29,11 @@ class MagazineCreateApi extends MagazineBaseApi
             new OA\Header(header: 'X-RateLimit-Retry-After', schema: new OA\Schema(type: 'integer'), description: 'Unix timestamp to retry the request after'),
             new OA\Header(header: 'X-RateLimit-Limit', schema: new OA\Schema(type: 'integer'), description: 'Number of requests available'),
         ]
+    )]
+    #[OA\Response(
+        response: 400,
+        description: 'The magazine could not be created due to invalid input, e.g. a magazine name that contains spaces, hyphens or other disallowed characters',
+        content: new OA\JsonContent(ref: new Model(type: \App\Schema\Errors\BadRequestErrorSchema::class))
     )]
     #[OA\Response(
         response: 401,
@@ -58,7 +64,23 @@ class MagazineCreateApi extends MagazineBaseApi
     ): JsonResponse {
         $headers = $this->rateLimit($apiMagazineLimiter);
 
-        $magazine = $this->createMagazine();
+        try {
+            $magazine = $this->createMagazine();
+        } catch (MagazineNameInvalidException $e) {
+            // Return the actionable message directly instead of throwing, so it
+            // survives production error rendering (which would otherwise replace
+            // the exception message with a generic "Bad Request").
+            return new JsonResponse(
+                [
+                    'type' => 'https://tools.ietf.org/html/rfc2616#section-10',
+                    'title' => 'An error occurred',
+                    'status' => 400,
+                    'detail' => $e->getMessage(),
+                ],
+                status: 400,
+                headers: $headers
+            );
+        }
 
         return new JsonResponse(
             $this->serializeMagazine($this->manager->createDto($magazine)),
