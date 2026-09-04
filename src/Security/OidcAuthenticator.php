@@ -126,6 +126,16 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
                 $user = $this->userRepository->findOneBy(['email' => $email]);
 
                 if ($user) {
+                    // Matching on email hands over an existing account, so
+                    // the provider must vouch for the address. Otherwise
+                    // anyone able to register an unverified address at the
+                    // provider could sign in as whichever member owns it.
+                    if (!$oidcUser->isEmailVerified()) {
+                        $this->logger->error('OIDC login refused: the email matches an existing account but the provider did not mark it verified');
+
+                        throw new CustomUserMessageAuthenticationException(self::FAILURE_MESSAGE);
+                    }
+
                     $user->oauthOidcId = $oidcUser->getId();
 
                     $this->entityManager->persist($user);
