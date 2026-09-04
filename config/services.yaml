@@ -336,3 +336,19 @@ services:
 
     App\Service\Oidc\OidcTokenValidator:
         factory: ['@App\Service\Oidc\OidcValidatorFactory', 'create']
+
+    # Built through the bundle's own provider factory, which turns the route
+    # name below into an absolute redirect URI. Unlike the nine named
+    # providers this client is not declared in knpu_oauth2_client.yaml,
+    # because the bundle passes provider_options through as raw configuration
+    # and cannot inject the HTTP client and cache that discovery needs.
+    App\Provider\Oidc:
+        factory: ['@knpu.oauth2.provider_factory', 'createProvider']
+        arguments:
+            - 'App\Provider\Oidc'
+            -
+                clientId: '%oauth_oidc_id%'
+                clientSecret: '%oauth_oidc_secret%'
+                metadata_resolver: '@App\Service\Oidc\OidcMetadataResolver'
+                username_claim: '%oauth_oidc_username_claim%'
+            - 'oauth_oidc_verify'

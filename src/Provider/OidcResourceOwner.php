@@ -1,0 +1,59 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Provider;
+
+use League\OAuth2\Client\Provider\ResourceOwnerInterface;
+
+class OidcResourceOwner implements ResourceOwnerInterface
+{
+    /**
+     * @param array<string, mixed> $response
+     */
+    public function __construct(
+        private readonly array $response,
+        private readonly string $usernameClaim,
+    ) {
+    }
+
+    public function getId(): ?string
+    {
+        return $this->claim('sub');
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->claim('email');
+    }
+
+    /**
+     * Providers disagree about which claim carries a human readable name, so
+     * the claim is configurable. The subject identifier is the fallback: it is
+     * the one claim OpenID Connect guarantees.
+     */
+    public function getUsername(): ?string
+    {
+        return $this->claim($this->usernameClaim) ?? $this->claim('sub');
+    }
+
+    public function getPictureUrl(): ?string
+    {
+        return $this->claim('picture');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return $this->response;
+    }
+
+    private function claim(string $name): ?string
+    {
+        $value = $this->response[$name] ?? null;
+
+        return \is_scalar($value) && '' !== (string) $value ? (string) $value : null;
+    }
+}
