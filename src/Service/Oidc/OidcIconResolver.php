@@ -13,8 +13,19 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * OpenID Connect has nowhere to publish this. Neither the discovery document
  * (OIDC Discovery 1.0, RFC 8414) nor the userinfo response carries a name or a
  * logo for the provider: `logo_uri` and `client_name` are *client* metadata,
- * which travels the other way. So the icon is guessed at the one location
- * every web server puts it, and the guess is allowed to fail.
+ * which travels the other way. So the icon is looked for the way a browser
+ * looks for one, and the search is allowed to fail.
+ *
+ * Two attempts, in the order a browser would make them:
+ *
+ *  1. `{issuer}/favicon.ico`.
+ *  2. The `<link rel="icon">` of the issuer's own root document.
+ *
+ * The second attempt is not belt and braces. A single-page IdP commonly serves
+ * its application shell for every unknown path, so `/favicon.ico` answers 200
+ * with `text/html` and no icon, while the shell's own `<link rel="icon">`
+ * points at the real one. Pocket ID does exactly this: `/favicon.ico` is the
+ * SPA fallback and the icon is at `/api/application-images/favicon`.
  *
  * The result is a data URI rather than a link to the provider, deliberately:
  *
@@ -33,6 +44,7 @@ class OidcIconResolver
     private const CACHE_TTL = 86400;
     private const FAILURE_CACHE_TTL = 3600;
     private const MAX_BYTES = 32768;
+    private const MAX_HTML_BYTES = 262144;
     private const TIMEOUT_SECONDS = 2;
 
     public function __construct(
@@ -67,7 +79,13 @@ class OidcIconResolver
             return \is_string($cached) && '' !== $cached ? $cached : null;
         }
 
-        $icon = $this->fetch(rtrim(trim($this->issuer), '/').'/favicon.ico');
+        $issuer = rtrim(trim($this->issuer), '/');
+        $icon = $this->fetchImage($issuer.'/favicon.ico');
+
+        if (null === $icon) {
+            $declared = $this->declaredIconUrl($issuer);
+            $icon = null !== $declared ? $this->fetchImage($declared) : null;
+        }
 
         $item->set($icon ?? '');
         $item->expiresAfter(null === $icon ? self::FAILURE_CACHE_TTL : self::CACHE_TTL);
@@ -76,7 +94,78 @@ class OidcIconResolver
         return $icon;
     }
 
-    private function fetch(string $url): ?string
+    /**
+     * Reads the issuer's root document and returns the URL its
+     * `<link rel="icon">` points at, resolved against the issuer and rejected
+     * unless it stays on the issuer's own origin. A provider that points
+     * somewhere else is not followed: the admin configured an issuer, not a
+     * licence to fetch arbitrary URLs from inside this network.
+     */
+    private function declaredIconUrl(string $issuer): ?string
+    {
+        try {
+            $response = $this->httpClient->request('GET', $issuer.'/', [
+                'timeout' => self::TIMEOUT_SECONDS,
+                'max_duration' => self::TIMEOUT_SECONDS,
+            ]);
+
+            if (200 !== $response->getStatusCode()) {
+                return null;
+            }
+
+            $html = substr($response->getContent(false), 0, self::MAX_HTML_BYTES);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (!preg_match_all('/<link\s[^>]*>/i', $html, $tags)) {
+            return null;
+        }
+
+        foreach ($tags[0] as $tag) {
+            if (!preg_match('/\srel\s*=\s*["\']?[^"\'>]*icon/i', $tag)) {
+                continue;
+            }
+
+            if (!preg_match('/\shref\s*=\s*["\']([^"\']+)["\']/i', $tag, $href)) {
+                continue;
+            }
+
+            $candidate = $this->absoluteUrl($issuer, trim($href[1]));
+
+            if (null !== $candidate) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function absoluteUrl(string $issuer, string $href): ?string
+    {
+        if ('' === $href || str_starts_with($href, 'data:')) {
+            return null;
+        }
+
+        $url = str_starts_with($href, 'http://') || str_starts_with($href, 'https://')
+            ? $href
+            : $issuer.'/'.ltrim($href, '/');
+
+        $issuerParts = parse_url($issuer);
+        $urlParts = parse_url($url);
+
+        if (!\is_array($issuerParts) || !\is_array($urlParts)) {
+            return null;
+        }
+
+        $sameOrigin = ($issuerParts['scheme'] ?? null) === ($urlParts['scheme'] ?? null)
+            && ($issuerParts['host'] ?? null) === ($urlParts['host'] ?? null)
+            && ($issuerParts['port'] ?? null) === ($urlParts['port'] ?? null);
+
+        return $sameOrigin ? $url : null;
+    }
+
+    private function fetchImage(string $url): ?string
     {
         try {
             $response = $this->httpClient->request('GET', $url, [
