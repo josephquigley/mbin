@@ -97,6 +97,7 @@ parameters:
     oauth_oidc_issuer: '%env(default::OAUTH_OIDC_ISSUER)%'
     oauth_oidc_display_name: '%env(default::OAUTH_OIDC_DISPLAY_NAME)%'
     oauth_oidc_username_claim: '%env(default::OAUTH_OIDC_USERNAME_CLAIM)%'
+    oauth_oidc_fetch_icon: '%env(default::OAUTH_OIDC_FETCH_ICON)%'
     oauth_oidc_authorize_url: '%env(default::OAUTH_OIDC_AUTHORIZE_URL)%'
     oauth_oidc_token_url: '%env(default::OAUTH_OIDC_TOKEN_URL)%'
     oauth_oidc_userinfo_url: '%env(default::OAUTH_OIDC_USERINFO_URL)%'
@@ -356,3 +357,10 @@ services:
         arguments:
             - '@App\Provider\Oidc'
             - '@request_stack'
+
+    App\Service\Oidc\OidcIconResolver:
+        arguments:
+            $httpClient: '@http_client'
+            $cache: '@cache.app'
+            $issuer: '%oauth_oidc_issuer%'
+            $fetchIcon: '%oauth_oidc_fetch_icon%'

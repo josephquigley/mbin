@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Twig\Components;
 
+use App\Service\Oidc\OidcIconResolver;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\UX\TwigComponent\Attribute\AsTwigComponent;
 
@@ -35,6 +36,7 @@ final class LoginSocialsComponent
         private readonly ?string $oauthOidcId,
         #[Autowire('%oauth_oidc_display_name%')]
         private readonly ?string $oauthOidcDisplayName,
+        private readonly OidcIconResolver $oidcIconResolver,
     ) {
     }
 
@@ -101,5 +103,15 @@ final class LoginSocialsComponent
     public function oidcDisplayName(): string
     {
         return !empty($this->oauthOidcDisplayName) ? $this->oauthOidcDisplayName : 'OpenID Connect';
+    }
+
+    /**
+     * The provider's favicon as a data URI, or null to fall back to a generic
+     * icon. Never throws and never blocks the page on a slow provider: see
+     * OidcIconResolver.
+     */
+    public function oidcIcon(): ?string
+    {
+        return $this->oidcIconResolver->resolve();
     }
 }
