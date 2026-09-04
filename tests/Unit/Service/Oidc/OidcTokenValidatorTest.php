@@ -76,6 +76,17 @@ class OidcTokenValidatorTest extends TestCase
         $this->validator()->validate($this->token(['exp' => time() - 3600]), self::NONCE);
     }
 
+    public function testMissingExpiryIsRejected(): void
+    {
+        $claims = $this->claims();
+        unset($claims['exp']);
+
+        $this->expectException(OidcValidationException::class);
+        $this->expectExceptionMessageMatches('/exp/i');
+
+        $this->validator()->validate(JWT::encode($claims, $this->privateKey, 'RS256', 'key-1'), self::NONCE);
+    }
+
     public function testFutureIssuedAtBeyondLeewayIsRejected(): void
     {
         $this->expectException(OidcValidationException::class);
@@ -110,6 +121,17 @@ class OidcTokenValidatorTest extends TestCase
         $this->expectExceptionMessageMatches('/nonce/i');
 
         $this->validator()->validate($this->token(), 'a-different-nonce');
+    }
+
+    public function testEmptyExpectedNonceIsRejectedEvenWhenTheTokenHasNone(): void
+    {
+        $claims = $this->claims();
+        unset($claims['nonce']);
+
+        $this->expectException(OidcValidationException::class);
+        $this->expectExceptionMessageMatches('/nonce/i');
+
+        $this->validator()->validate(JWT::encode($claims, $this->privateKey, 'RS256', 'key-1'), '');
     }
 
     public function testUnknownKeyIdIsRejected(): void
