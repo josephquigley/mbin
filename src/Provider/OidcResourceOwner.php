@@ -37,6 +37,18 @@ class OidcResourceOwner implements ResourceOwnerInterface
         return $this->claim($this->usernameClaim) ?? $this->claim('sub');
     }
 
+    /**
+     * Whether the provider vouches for the email address. OpenID Connect
+     * defines the claim as a boolean, but some providers serialise it as the
+     * string "true". Anything else, including an absent claim, is unverified.
+     */
+    public function isEmailVerified(): bool
+    {
+        $value = $this->response['email_verified'] ?? null;
+
+        return true === $value || 'true' === $value;
+    }
+
     public function getPictureUrl(): ?string
     {
         return $this->claim('picture');
