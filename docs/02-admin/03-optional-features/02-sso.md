@@ -169,10 +169,39 @@ OAUTH_OIDC_SECRET=xJHGApsadOPUIAsdoih # your client secret
 
 The authorization, token, userinfo and JWKS endpoints are read from
 `{issuer}/.well-known/openid-configuration`, which is cached for a day. The
-login button is labelled from `OAUTH_OIDC_DISPLAY_NAME` (it says "OpenID
-Connect" if you leave that empty), and the username is taken from the
-`preferred_username` claim unless `OAUTH_OIDC_USERNAME_CLAIM` names another
-one.
+username is taken from the `preferred_username` claim unless
+`OAUTH_OIDC_USERNAME_CLAIM` names another one.
+
+#### The login button
+
+Set `OAUTH_OIDC_DISPLAY_NAME` to whatever your members call the place they are
+signing in to. It is worth setting: the fallback is the words "OpenID
+Connect", which is accurate and means nothing to anyone who does not already
+know what OIDC is.
+
+```ini
+OAUTH_OIDC_DISPLAY_NAME=Example Ltd
+```
+
+The name cannot be discovered. Neither OpenID Connect Discovery nor RFC 8414
+gives a provider anywhere to publish its own name or logo (`client_name` and
+`logo_uri` are client metadata, describing your application to the provider,
+not the other way round), so this has to be configuration.
+
+The icon is a different matter, and Mbin guesses. It fetches
+`{issuer}/favicon.ico` once, caches it for a day, and inlines it on the button.
+The image is embedded rather than linked, so rendering the login page makes no
+request to your provider and it works when the provider is reachable from the
+Mbin container but not from a member's browser. Anything that is not a small
+image (wrong content type, larger than 32 KB, an error, a timeout) falls back
+to a generic lock icon, and a failed fetch is retried an hour later rather than
+on every page load.
+
+To skip the fetch entirely:
+
+```ini
+OAUTH_OIDC_FETCH_ICON=false
+```
 
 PKCE is always used, and the `id_token` is verified: its signature against the
 provider's published keys, its issuer against the value you configured, its
