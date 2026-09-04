@@ -104,10 +104,7 @@ class OidcIconResolver
     private function declaredIconUrl(string $issuer): ?string
     {
         try {
-            $response = $this->httpClient->request('GET', $issuer.'/', [
-                'timeout' => self::TIMEOUT_SECONDS,
-                'max_duration' => self::TIMEOUT_SECONDS,
-            ]);
+            $response = $this->httpClient->request('GET', $issuer.'/', $this->requestOptions(self::MAX_HTML_BYTES));
 
             if (200 !== $response->getStatusCode()) {
                 return null;
@@ -165,13 +162,32 @@ class OidcIconResolver
         return $sameOrigin ? $url : null;
     }
 
+    /**
+     * Redirects are not followed, so a provider (or whoever answers for it)
+     * cannot bounce this fetch to an address the same-origin check never saw.
+     * The download is abandoned as soon as it grows past the limit rather
+     * than after the whole body has been read into memory.
+     *
+     * @return array<string, mixed>
+     */
+    private function requestOptions(int $maxBytes): array
+    {
+        return [
+            'timeout' => self::TIMEOUT_SECONDS,
+            'max_duration' => self::TIMEOUT_SECONDS,
+            'max_redirects' => 0,
+            'on_progress' => static function (int $downloaded, int $total) use ($maxBytes): void {
+                if ($downloaded > $maxBytes || $total > $maxBytes) {
+                    throw new \OverflowException(\sprintf('The response exceeds %d bytes.', $maxBytes));
+                }
+            },
+        ];
+    }
+
     private function fetchImage(string $url): ?string
     {
         try {
-            $response = $this->httpClient->request('GET', $url, [
-                'timeout' => self::TIMEOUT_SECONDS,
-                'max_duration' => self::TIMEOUT_SECONDS,
-            ]);
+            $response = $this->httpClient->request('GET', $url, $this->requestOptions(self::MAX_BYTES));
 
             if (200 !== $response->getStatusCode()) {
                 return null;
