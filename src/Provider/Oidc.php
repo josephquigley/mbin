@@ -25,6 +25,7 @@ class Oidc extends AbstractProvider
 
     private OidcMetadataResolver $metadataResolver;
     private string $usernameClaim;
+    private bool $requestGroups;
 
     /**
      * @param array<string, mixed> $options
@@ -36,7 +37,12 @@ class Oidc extends AbstractProvider
         $usernameClaim = $options['username_claim'] ?? null;
         $this->usernameClaim = \is_string($usernameClaim) && '' !== $usernameClaim ? $usernameClaim : 'preferred_username';
 
-        unset($options['metadata_resolver'], $options['username_claim']);
+        // The groups scope is only asked for when something actually reads a
+        // group. Requesting a scope an instance has no use for would show the
+        // person a consent screen listing access nobody needs.
+        $this->requestGroups = '' !== trim((string) ($options['admin_group'] ?? ''));
+
+        unset($options['metadata_resolver'], $options['username_claim'], $options['admin_group']);
 
         parent::__construct($options, $collaborators);
     }
@@ -64,7 +70,13 @@ class Oidc extends AbstractProvider
      */
     protected function getDefaultScopes(): array
     {
-        return ['openid', 'profile', 'email'];
+        $scopes = ['openid', 'profile', 'email'];
+
+        if ($this->requestGroups) {
+            $scopes[] = 'groups';
+        }
+
+        return $scopes;
     }
 
     protected function getScopeSeparator(): string

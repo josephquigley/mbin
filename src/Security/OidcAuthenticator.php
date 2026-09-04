@@ -15,6 +15,7 @@ use App\Security\Oidc\OidcClient;
 use App\Service\ImageManagerInterface;
 use App\Service\IpResolver;
 use App\Service\Oidc\Exception\OidcValidationException;
+use App\Service\Oidc\OidcAdminGroupPolicy;
 use App\Service\Oidc\OidcTokenValidator;
 use App\Service\SettingsManager;
 use App\Service\UserManager;
@@ -44,6 +45,7 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
     public function __construct(
         private readonly OidcClient $client,
         private readonly OidcTokenValidator $tokenValidator,
+        private readonly OidcAdminGroupPolicy $adminGroupPolicy,
         private readonly EntityManagerInterface $entityManager,
         private readonly UserManager $userManager,
         private readonly ImageManagerInterface $imageManager,
@@ -112,6 +114,8 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
                 );
 
                 if ($existingUser) {
+                    $this->promoteIfEntitled($existingUser, $claims, $oidcUser);
+
                     return $existingUser;
                 }
 
@@ -140,6 +144,8 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
 
                     $this->entityManager->persist($user);
                     $this->entityManager->flush();
+
+                    $this->promoteIfEntitled($user, $claims, $oidcUser);
 
                     return $user;
                 }
@@ -173,12 +179,39 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
                 $this->entityManager->persist($user);
                 $this->entityManager->flush();
 
+                $this->promoteIfEntitled($user, $claims, $oidcUser);
+
                 return $user;
             }),
             [
                 $rememberBadge,
             ]
         );
+    }
+
+    /**
+     * Grants ROLE_ADMIN when the provider says this person is in the
+     * configured admin group. Never removes it: see OidcAdminGroupPolicy for
+     * why taking admin away on a claim's absence is the more dangerous of the
+     * two mistakes.
+     *
+     * @param array<string, mixed> $claims
+     */
+    private function promoteIfEntitled(User $user, array $claims, OidcResourceOwner $oidcUser): void
+    {
+        if ($user->isAdmin() || !$this->adminGroupPolicy->shouldPromote($claims, $oidcUser)) {
+            return;
+        }
+
+        $user->setOrRemoveAdminRole();
+
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        $this->logger->notice('Granted ROLE_ADMIN to {username}: the OIDC provider placed them in {group}', [
+            'username' => $user->getUserIdentifier(),
+            'group' => $this->adminGroupPolicy->group(),
+        ]);
     }
 
     private function getAvatar(?string $pictureUrl): ?Image
