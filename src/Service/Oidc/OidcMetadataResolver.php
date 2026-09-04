@@ -76,12 +76,7 @@ class OidcMetadataResolver
         }
 
         if ($missing) {
-            throw new OidcConfigurationException(\sprintf(
-                'OIDC login is not usable: %s could not be discovered from %s and %s not set.',
-                implode(', ', $missing),
-                $this->discoveryUrl($this->issuer),
-                1 === \count($missing) ? 'is' : 'are',
-            ));
+            throw new OidcConfigurationException(\sprintf('OIDC login is not usable: %s could not be discovered from %s and %s not set.', implode(', ', $missing), $this->discoveryUrl($this->issuer), 1 === \count($missing) ? 'is' : 'are'));
         }
 
         return new OidcMetadata($this->issuer, $authorization, $token, $userinfo, $jwks);
