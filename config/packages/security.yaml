@@ -51,6 +51,7 @@ security:
                 - App\Security\SimpleLoginAuthenticator
                 - App\Security\ZitadelAuthenticator
                 - App\Security\AuthentikAuthenticator
+                - App\Security\OidcAuthenticator
             logout:
                 enable_csrf: true
                 path: app_logout
