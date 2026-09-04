@@ -78,6 +78,19 @@ parameters:
     oauth_authentik_secret: '%env(OAUTH_AUTHENTIK_SECRET)%'
     oauth_authentik_base_url: '%env(OAUTH_AUTHENTIK_BASE_URL)%'
 
+    # Generic OIDC provider. Every variable uses the `default::` form so that an
+    # instance upgrading with its existing .env keeps booting: the bare
+    # %env(NAME)% form raises EnvNotFoundException when the variable is absent.
+    oauth_oidc_id: '%env(default::OAUTH_OIDC_ID)%'
+    oauth_oidc_secret: '%env(default::OAUTH_OIDC_SECRET)%'
+    oauth_oidc_issuer: '%env(default::OAUTH_OIDC_ISSUER)%'
+    oauth_oidc_display_name: '%env(default::OAUTH_OIDC_DISPLAY_NAME)%'
+    oauth_oidc_username_claim: '%env(default::OAUTH_OIDC_USERNAME_CLAIM)%'
+    oauth_oidc_authorize_url: '%env(default::OAUTH_OIDC_AUTHORIZE_URL)%'
+    oauth_oidc_token_url: '%env(default::OAUTH_OIDC_TOKEN_URL)%'
+    oauth_oidc_userinfo_url: '%env(default::OAUTH_OIDC_USERINFO_URL)%'
+    oauth_oidc_jwks_url: '%env(default::OAUTH_OIDC_JWKS_URL)%'
+
     router.request_context.host: '%env(KBIN_DOMAIN)%'
     router.request_context.scheme: https
 
@@ -304,3 +317,13 @@ services:
             # uncomment the following if your Redis server requires a password
             #- auth:
             #    - '%env(REDIS_PASSWORD)%'
+
+    App\Service\Oidc\OidcMetadataResolver:
+        arguments:
+            $httpClient: '@http_client'
+            $cache: '@cache.app'
+            $issuer: '%oauth_oidc_issuer%'
+            $authorizationEndpoint: '%oauth_oidc_authorize_url%'
+            $tokenEndpoint: '%oauth_oidc_token_url%'
+            $userinfoEndpoint: '%oauth_oidc_userinfo_url%'
+            $jwksUri: '%oauth_oidc_jwks_url%'
