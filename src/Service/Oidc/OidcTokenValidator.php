@@ -52,6 +52,7 @@ class OidcTokenValidator
         $this->assertIssuer($claims);
         $this->assertAudience($claims);
         $this->assertIssuedAt($claims);
+        $this->assertExpiry($claims);
         $this->assertNonce($claims, $expectedNonce);
         $this->assertSubject($claims);
 
@@ -98,10 +99,31 @@ class OidcTokenValidator
     }
 
     /**
+     * JWT::decode() only checks exp when the token carries one. OpenID Connect
+     * makes the claim mandatory, and without it a token would be valid for
+     * ever.
+     *
+     * @param array<string, mixed> $claims
+     */
+    private function assertExpiry(array $claims): void
+    {
+        if (!\is_int($claims['exp'] ?? null)) {
+            throw new OidcValidationException('The id_token exp claim is missing.');
+        }
+    }
+
+    /**
      * @param array<string, mixed> $claims
      */
     private function assertNonce(array $claims, string $expectedNonce): void
     {
+        // A session that never sent a nonce cannot have an id_token to check.
+        // Refusing here keeps an empty expected value from matching a token
+        // that simply omits the claim.
+        if ('' === $expectedNonce) {
+            throw new OidcValidationException('No nonce was sent with the authorization request.');
+        }
+
         if (!hash_equals($expectedNonce, (string) ($claims['nonce'] ?? ''))) {
             throw new OidcValidationException('The id_token nonce does not match the value sent with the request.');
         }
