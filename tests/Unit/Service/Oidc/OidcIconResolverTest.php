@@ -124,6 +124,36 @@ class OidcIconResolverTest extends TestCase
         self::assertNull($this->resolver($client)->resolve());
     }
 
+    public function testRedirectsAreNotFollowed(): void
+    {
+        $options = [];
+        $client = new MockHttpClient(function (string $method, string $url, array $requestOptions) use (&$options): MockResponse {
+            $options[] = $requestOptions;
+
+            return new MockResponse('', [
+                'http_code' => 302,
+                'response_headers' => ['location' => 'http://169.254.169.254/latest/meta-data', 'content-type' => 'image/png'],
+            ]);
+        });
+
+        self::assertNull($this->resolver($client)->resolve());
+        self::assertCount(2, $options);
+
+        foreach ($options as $requestOptions) {
+            self::assertSame(0, $requestOptions['max_redirects']);
+        }
+    }
+
+    public function testAnOversizedBodyIsAbortedWhileDownloading(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse([str_repeat('x', 20000), str_repeat('x', 20000), str_repeat('x', 20000)], ['response_headers' => ['content-type' => 'image/png']]),
+            new MockResponse('<html></html>', ['response_headers' => ['content-type' => 'text/html']]),
+        ]);
+
+        self::assertNull($this->resolver($client)->resolve());
+    }
+
     public function testAnErrorStatusIsRejected(): void
     {
         $client = new MockHttpClient([
