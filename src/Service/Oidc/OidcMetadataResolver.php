@@ -112,6 +112,13 @@ class OidcMetadataResolver
             throw new OidcConfigurationException(\sprintf('OIDC discovery failed at %s: %s', $url, $e->getMessage()), 0, $e);
         }
 
+        // OIDC Discovery 1.0 section 4.3: the issuer in the document MUST be
+        // identical to the one the document was fetched for. A document that
+        // says otherwise is either misconfigured or not the provider's own.
+        if (($document['issuer'] ?? null) !== $issuer) {
+            throw new OidcConfigurationException(\sprintf('OIDC discovery at %s returned issuer %s, which is not the configured issuer %s.', $url, var_export($document['issuer'] ?? null, true), $issuer));
+        }
+
         $item->set($document);
         $item->expiresAfter(self::CACHE_TTL);
         $this->cache->save($item);
