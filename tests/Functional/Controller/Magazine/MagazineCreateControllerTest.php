@@ -46,7 +46,25 @@ class MagazineCreateControllerTest extends WebTestCase
             )
         );
 
-        $this->assertSelectorTextContains('#content', 'This value is too short. It should have 2 characters or more.');
+        $this->assertSelectorTextContains('#content', 'A magazine name must be at least 2 characters long.');
+    }
+
+    public function testUserCantCreateMagazineWithASpaceInTheName(): void
+    {
+        $this->client->loginUser($this->getUserByUsername('JohnDoe'));
+
+        $crawler = $this->client->request('GET', '/newMagazine');
+
+        $this->client->submit(
+            $crawler->filter('form[name=magazine]')->selectButton('Create new magazine')->form(
+                [
+                    'magazine[name]' => 'My Community',
+                    'magazine[title]' => 'Test magazine title',
+                ]
+            )
+        );
+
+        $this->assertSelectorTextContains('#content', 'A magazine name may only contain letters, numbers and underscores');
     }
 
     public function testUserCantCreateTwoSameMagazines(): void

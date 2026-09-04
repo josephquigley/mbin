@@ -1,0 +1,4 @@
+magazine_name_too_short: A magazine name must be at least {{ limit }} characters long.
+magazine_name_too_long: A magazine name must be at most {{ limit }} characters long.
+magazine_name_invalid_characters: A magazine name may only contain letters, numbers and
+  underscores, so {{ value }} cannot be used.

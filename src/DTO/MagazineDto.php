@@ -22,8 +22,8 @@ class MagazineDto
     public Image|ImageDto|null $icon = null;
     public Image|ImageDto|null $banner = null;
     #[Assert\NotBlank]
-    #[Assert\Length(min: 2, max: self::MAX_NAME_LENGTH, countUnit: Assert\Length::COUNT_GRAPHEMES)]
-    #[Assert\Regex(pattern: RegPatterns::MAGAZINE_NAME, match: true)]
+    #[Assert\Length(min: 2, max: self::MAX_NAME_LENGTH, countUnit: Assert\Length::COUNT_GRAPHEMES, minMessage: 'magazine_name_too_short', maxMessage: 'magazine_name_too_long')]
+    #[Assert\Regex(pattern: RegPatterns::MAGAZINE_NAME, match: true, message: 'magazine_name_invalid_characters')]
     public ?string $name = null;
     #[Assert\NotBlank]
     #[Assert\Length(min: 3, max: self::MAX_TITLE_LENGTH, countUnit: Assert\Length::COUNT_GRAPHEMES)]

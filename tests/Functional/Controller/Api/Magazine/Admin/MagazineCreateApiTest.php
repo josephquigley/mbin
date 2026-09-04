@@ -203,4 +203,162 @@ class MagazineCreateApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(400);
     }
+
+    public function testApiCreateMagazineReportsWhyTheNameIsInvalid(): void
+    {
+        $token = $this->getCreateToken();
+
+        $this->client->jsonRequest(
+            'POST', '/api/moderate/magazine/new',
+            parameters: [
+                'name' => 'My Community',
+                'title' => 'A name with a space',
+                'isAdult' => false,
+            ],
+            server: ['HTTP_AUTHORIZATION' => $token]
+        );
+
+        self::assertResponseStatusCodeSame(400);
+        $jsonData = self::getJsonResponse($this->client);
+
+        self::assertArrayHasKey('violations', $jsonData);
+        self::assertSame('name', $jsonData['violations'][0]['propertyPath']);
+        self::assertStringContainsString('letters, numbers and underscores', $jsonData['violations'][0]['title']);
+        self::assertStringContainsString('letters, numbers and underscores', $jsonData['detail']);
+
+        $this->client->jsonRequest(
+            'POST', '/api/moderate/magazine/new',
+            parameters: [
+                'name' => 'my-community',
+                'title' => 'A name with a hyphen',
+                'isAdult' => false,
+            ],
+            server: ['HTTP_AUTHORIZATION' => $token]
+        );
+
+        self::assertResponseStatusCodeSame(400);
+        $jsonData = self::getJsonResponse($this->client);
+        self::assertStringContainsString('letters, numbers and underscores', $jsonData['detail']);
+
+        $this->client->jsonRequest(
+            'POST', '/api/moderate/magazine/new',
+            parameters: [
+                'name' => 'invalidch@racters!',
+                'title' => 'A name nothing can salvage',
+                'isAdult' => false,
+            ],
+            server: ['HTTP_AUTHORIZATION' => $token]
+        );
+
+        self::assertResponseStatusCodeSame(400);
+        $jsonData = self::getJsonResponse($this->client);
+        self::assertStringContainsString('letters, numbers and underscores', $jsonData['detail']);
+    }
+
+    public function testApiCreateMagazineReportsNameLengthProblems(): void
+    {
+        $token = $this->getCreateToken();
+
+        $this->client->jsonRequest(
+            'POST', '/api/moderate/magazine/new',
+            parameters: [
+                'name' => 'a',
+                'title' => 'Too short a name',
+                'isAdult' => false,
+            ],
+            server: ['HTTP_AUTHORIZATION' => $token]
+        );
+
+        self::assertResponseStatusCodeSame(400);
+        $jsonData = self::getJsonResponse($this->client);
+        self::assertStringContainsString('at least 2 characters', $jsonData['detail']);
+
+        $this->client->jsonRequest(
+            'POST', '/api/moderate/magazine/new',
+            parameters: [
+                'name' => 'long_name_that_exceeds_the_limit',
+                'title' => 'Too long a name',
+                'isAdult' => false,
+            ],
+            server: ['HTTP_AUTHORIZATION' => $token]
+        );
+
+        self::assertResponseStatusCodeSame(400);
+        $jsonData = self::getJsonResponse($this->client);
+        self::assertStringContainsString('at most 25 characters', $jsonData['detail']);
+    }
+
+    public function testApiCreateMagazineDoesNotReportABlankNameAsTooShort(): void
+    {
+        $token = $this->getCreateToken();
+
+        $this->client->jsonRequest(
+            'POST', '/api/moderate/magazine/new',
+            parameters: [
+                'name' => '',
+                'title' => 'A blank name',
+                'isAdult' => false,
+            ],
+            server: ['HTTP_AUTHORIZATION' => $token]
+        );
+
+        self::assertResponseStatusCodeSame(400);
+        $jsonData = self::getJsonResponse($this->client);
+
+        // Regex returns early on an empty string, so a blank name is only ever reported
+        // as blank, never as a character set problem.
+        self::assertStringNotContainsString('letters, numbers and underscores', $jsonData['detail']);
+        self::assertStringContainsString('should not be blank', $jsonData['detail']);
+    }
+
+    public function testApiCreateMagazineReportsADuplicateNameAsTaken(): void
+    {
+        $this->getMagazineByName('taken');
+        $token = $this->getCreateToken();
+
+        $this->client->jsonRequest(
+            'POST', '/api/moderate/magazine/new',
+            parameters: [
+                'name' => 'taken',
+                'title' => 'A name already in use',
+                'isAdult' => false,
+            ],
+            server: ['HTTP_AUTHORIZATION' => $token]
+        );
+
+        self::assertResponseStatusCodeSame(400);
+        $jsonData = self::getJsonResponse($this->client);
+
+        self::assertSame('name', $jsonData['violations'][0]['propertyPath']);
+        self::assertStringNotContainsString('letters, numbers and underscores', $jsonData['detail']);
+    }
+
+    public function testApiCanCreateMagazineWithUnderscoresInTheName(): void
+    {
+        $token = $this->getCreateToken();
+
+        $this->client->jsonRequest(
+            'POST', '/api/moderate/magazine/new',
+            parameters: [
+                'name' => 'My_Community',
+                'title' => 'A valid name',
+                'isAdult' => false,
+            ],
+            server: ['HTTP_AUTHORIZATION' => $token]
+        );
+
+        self::assertResponseStatusCodeSame(201);
+        $jsonData = self::getJsonResponse($this->client);
+        self::assertEquals('My_Community', $jsonData['name']);
+    }
+
+    private function getCreateToken(): string
+    {
+        $this->client->loginUser($this->getUserByUsername('JohnDoe'));
+        self::createOAuth2AuthCodeClient();
+
+        $codes = self::getAuthorizationCodeTokenResponse($this->client, scopes: 'read write moderate:magazine_admin:create');
+
+        return $codes['token_type'].' '.$codes['access_token'];
+    }
 }
