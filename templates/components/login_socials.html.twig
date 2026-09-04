@@ -42,7 +42,8 @@
                 <span>{{ 'continue_with'|trans }} Microsoft</span></a>
         {% endif %}
         {% if this.oidcEnabled %}
-            <a href="{{ path('oauth_oidc_connect') }}" class="btn btn__secondary"><i class="fa-solid fa-lock" aria-hidden="true"></i>
+            {% set oidc_icon = this.oidcIcon %}
+            <a href="{{ path('oauth_oidc_connect') }}" class="btn btn__secondary">{% if oidc_icon %}<img src="{{ oidc_icon }}" alt="" width="16" height="16" aria-hidden="true">{% else %}<i class="fa-solid fa-lock" aria-hidden="true"></i>{% endif %}
                 <span>{{ 'continue_with'|trans }} {{ this.oidcDisplayName }}</span></a>
         {% endif %}
         {% if this.privacyPortalEnabled %}
