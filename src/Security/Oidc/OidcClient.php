@@ -19,6 +19,10 @@ class OidcClient extends OAuth2PKCEClient
 {
     public const NONCE_KEY = 'oidc_nonce';
 
+    /**
+     * @param string[]             $scopes
+     * @param array<string, mixed> $options
+     */
     public function redirect(array $scopes = [], array $options = []): RedirectResponse
     {
         $nonce = bin2hex(random_bytes(16));

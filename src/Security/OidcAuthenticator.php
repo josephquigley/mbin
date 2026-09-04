@@ -20,6 +20,7 @@ use App\Service\SettingsManager;
 use App\Service\UserManager;
 use App\Utils\Slugger;
 use Doctrine\ORM\EntityManagerInterface;
+use League\OAuth2\Client\Token\AccessToken;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\RouterInterface;
@@ -67,6 +68,12 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
     {
         $expectedNonce = $this->client->consumeNonce();
         $accessToken = $this->client->getAccessToken();
+
+        if (!$accessToken instanceof AccessToken) {
+            $this->logger->error('OIDC login failed: the token endpoint returned an unusable token');
+
+            throw new CustomUserMessageAuthenticationException(self::FAILURE_MESSAGE);
+        }
 
         $idToken = $accessToken->getValues()['id_token'] ?? null;
 
