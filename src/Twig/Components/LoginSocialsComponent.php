@@ -31,6 +31,10 @@ final class LoginSocialsComponent
         private readonly ?string $oauthAuthentikId,
         #[Autowire('%oauth_azure_id%')]
         private readonly ?string $oauthAzureId,
+        #[Autowire('%oauth_oidc_id%')]
+        private readonly ?string $oauthOidcId,
+        #[Autowire('%oauth_oidc_display_name%')]
+        private readonly ?string $oauthOidcDisplayName,
     ) {
     }
 
@@ -82,5 +86,20 @@ final class LoginSocialsComponent
     public function azureEnabled(): bool
     {
         return !empty($this->oauthAzureId);
+    }
+
+    public function oidcEnabled(): bool
+    {
+        return !empty($this->oauthOidcId);
+    }
+
+    /**
+     * The generic provider has no name of its own, so an admin supplies one.
+     * Without it the button would have to say something meaningless to a
+     * member, such as the word "generic".
+     */
+    public function oidcDisplayName(): string
+    {
+        return !empty($this->oauthOidcDisplayName) ? $this->oauthOidcDisplayName : 'OpenID Connect';
     }
 }
