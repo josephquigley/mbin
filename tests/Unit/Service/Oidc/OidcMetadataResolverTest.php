@@ -15,6 +15,7 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 class OidcMetadataResolverTest extends TestCase
 {
     private const DISCOVERY = [
+        'issuer' => 'https://idp.test',
         'authorization_endpoint' => 'https://idp.test/authorize',
         'token_endpoint' => 'https://idp.test/api/oidc/token',
         'userinfo_endpoint' => 'https://idp.test/api/oidc/userinfo',
@@ -92,10 +93,32 @@ class OidcMetadataResolverTest extends TestCase
 
     public function testAnIncompleteDiscoveryDocumentNamesTheMissingKeys(): void
     {
-        $client = new MockHttpClient([new JsonMockResponse(['authorization_endpoint' => 'https://idp.test/authorize'])]);
+        $client = new MockHttpClient([new JsonMockResponse(['issuer' => 'https://idp.test', 'authorization_endpoint' => 'https://idp.test/authorize'])]);
 
         $this->expectException(OidcConfigurationException::class);
         $this->expectExceptionMessageMatches('/OAUTH_OIDC_JWKS_URL/');
+
+        $this->resolver($client)->resolve();
+    }
+
+    public function testADiscoveryDocumentForAnotherIssuerIsRejected(): void
+    {
+        $client = new MockHttpClient([new JsonMockResponse(['issuer' => 'https://other.test'] + self::DISCOVERY)]);
+
+        $this->expectException(OidcConfigurationException::class);
+        $this->expectExceptionMessageMatches('#https://other\.test#');
+
+        $this->resolver($client)->resolve();
+    }
+
+    public function testADiscoveryDocumentWithoutAnIssuerIsRejected(): void
+    {
+        $discovery = self::DISCOVERY;
+        unset($discovery['issuer']);
+        $client = new MockHttpClient([new JsonMockResponse($discovery)]);
+
+        $this->expectException(OidcConfigurationException::class);
+        $this->expectExceptionMessageMatches('/issuer/i');
 
         $this->resolver($client)->resolve();
     }
