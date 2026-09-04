@@ -83,6 +83,8 @@ use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Constraints\Image as BaseImageConstraint;
+use Symfony\Component\Validator\ConstraintViolationListInterface;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -437,6 +439,22 @@ class BaseApi extends AbstractController
         }
 
         return $image;
+    }
+
+    /**
+     * Reject a request whose payload failed validation, telling the client what was wrong with it.
+     *
+     * Throwing a plain BadRequestHttpException loses the violations: outside debug mode
+     * ProblemNormalizer replaces the exception message with the bare status text, so the
+     * client only ever reads "Bad Request". Wrapping a ValidationFailedException makes the
+     * same normalizer render an RFC 7807 body with a violations array and a populated
+     * detail, which is what Symfony does for its own validation failures.
+     *
+     * @param object $dto the payload that was validated, used as the root of the violations
+     */
+    protected function throwValidationError(object $dto, ConstraintViolationListInterface $errors): never
+    {
+        throw new BadRequestHttpException((string) $errors, new ValidationFailedException($dto, $errors));
     }
 
     protected function reportContent(ReportInterface $reportable): void

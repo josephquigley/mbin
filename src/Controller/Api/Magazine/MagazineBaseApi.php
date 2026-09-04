@@ -78,7 +78,7 @@ class MagazineBaseApi extends BaseApi
 
         $errors = $this->validator->validate($dto);
         if (\count($errors) > 0) {
-            throw new BadRequestHttpException((string) $errors);
+            $this->throwValidationError($dto, $errors);
         }
 
         if (!empty($dto->rules)) {

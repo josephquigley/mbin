@@ -30,6 +30,11 @@ class MagazineCreateApi extends MagazineBaseApi
         ]
     )]
     #[OA\Response(
+        response: 400,
+        description: 'The magazine could not be created because the request was invalid',
+        content: new OA\JsonContent(ref: new Model(type: \App\Schema\Errors\BadRequestErrorSchema::class))
+    )]
+    #[OA\Response(
         response: 401,
         description: 'Permission denied due to missing or expired token',
         content: new OA\JsonContent(ref: new Model(type: \App\Schema\Errors\UnauthorizedErrorSchema::class))
