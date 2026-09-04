@@ -351,3 +351,8 @@ services:
                 metadata_resolver: '@App\Service\Oidc\OidcMetadataResolver'
                 username_claim: '%oauth_oidc_username_claim%'
             - 'oauth_oidc_verify'
+
+    App\Security\Oidc\OidcClient:
+        arguments:
+            - '@App\Provider\Oidc'
+            - '@request_stack'
