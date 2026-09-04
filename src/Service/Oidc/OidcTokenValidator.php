@@ -23,8 +23,8 @@ class OidcTokenValidator
 
     /**
      * @param \Closure(): (array<string, Key>|\ArrayAccess<string, Key>) $keySetResolver
-     *                                                                   deferred, so that a misconfigured instance still boots and only
-     *                                                                   an OIDC login fails
+     *                                                                                   deferred, so that a misconfigured instance still boots and only
+     *                                                                                   an OIDC login fails
      */
     public function __construct(
         private readonly \Closure $keySetResolver,

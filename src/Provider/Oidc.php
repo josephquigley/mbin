@@ -80,11 +80,7 @@ class Oidc extends AbstractProvider
         if (\is_array($data) && !empty($data['error'])) {
             $message = $data['error_description'] ?? $data['error'];
 
-            throw new IdentityProviderException(
-                htmlentities((string) $message, ENT_QUOTES, 'UTF-8'),
-                $response->getStatusCode(),
-                $response,
-            );
+            throw new IdentityProviderException(htmlentities((string) $message, ENT_QUOTES, 'UTF-8'), $response->getStatusCode(), $response);
         }
     }
 
