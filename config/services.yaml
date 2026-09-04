@@ -326,3 +326,12 @@ services:
             $tokenEndpoint: '%oauth_oidc_token_url%'
             $userinfoEndpoint: '%oauth_oidc_userinfo_url%'
             $jwksUri: '%oauth_oidc_jwks_url%'
+
+    App\Service\Oidc\OidcValidatorFactory:
+        arguments:
+            $cache: '@cache.app'
+            $clientId: '%oauth_oidc_id%'
+            $issuer: '%oauth_oidc_issuer%'
+
+    App\Service\Oidc\OidcTokenValidator:
+        factory: ['@App\Service\Oidc\OidcValidatorFactory', 'create']
