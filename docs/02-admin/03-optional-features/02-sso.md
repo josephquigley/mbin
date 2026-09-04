@@ -194,7 +194,8 @@ page, caches what it finds for a day, and inlines it on the button. The second
 attempt matters more than it sounds: a single-page provider often serves its
 application shell for any unknown path, so `/favicon.ico` answers 200 with HTML
 and no icon while the shell names the real one. A declared icon is only
-followed when it stays on the issuer's own origin.
+followed when it stays on the issuer's own origin, and redirects are not
+followed at all, so the provider cannot send this fetch anywhere else.
 The image is embedded rather than linked, so rendering the login page makes no
 request to your provider and it works when the provider is reachable from the
 Mbin container but not from a member's browser. Anything that is not a small
@@ -210,9 +211,22 @@ OAUTH_OIDC_FETCH_ICON=false
 
 PKCE is always used, and the `id_token` is verified: its signature against the
 provider's published keys, its issuer against the value you configured, its
-audience against your client ID, its expiry, and its nonce against the value
-Mbin sent. The subject in the userinfo response must match the subject in the
-token.
+audience against your client ID, its expiry (which must be present), and its
+nonce against the value Mbin sent. The subject in the userinfo response must
+match the subject in the token.
+
+The discovery document must name the same issuer you configured. A document
+that claims another issuer is rejected, as OpenID Connect Discovery requires.
+
+#### Matching on email
+
+A member who has never signed in through this provider is matched to an
+existing account by email address, but only when the provider sends
+`email_verified: true` for that address. Without it, the login is refused and
+the reason is logged. Otherwise anyone who could register an unverified
+address at your provider could sign in as whichever member owns it. If your
+provider does not verify addresses, or does not send the claim, existing
+members cannot be matched this way: link them yourself, as described below.
 
 #### When discovery is not enough
 
@@ -248,3 +262,18 @@ UPDATE "user" SET oauth_oidc_id = oauth_keycloak_id WHERE oauth_keycloak_id IS N
 Only do this when both clients point at the same issuer. A subject identifier
 is unique within one provider and means nothing outside it, so copying between
 two different providers would link accounts to the wrong people.
+
+#### Changing the issuer
+
+The same rule applies when you point `OAUTH_OIDC_ISSUER` at a different
+provider. The subject identifiers already stored belong to the old provider,
+and the new one may hand out the same values to different people (sequential
+numbers are common), which would sign them into the wrong accounts. Clear the
+stored identifiers before the first login against the new provider:
+
+```sql
+UPDATE "user" SET oauth_oidc_id = NULL WHERE oauth_oidc_id IS NOT NULL;
+```
+
+Members are then matched again by verified email on their next login, or can
+be linked by hand as above.
