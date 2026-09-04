@@ -151,3 +151,66 @@ OAUTH_AZURE_ID=3245498543 # your client ID
 OAUTH_AZURE_SECRET=xJHGApsadOPUIAsdoih # your client secret
 OAUTH_AZURE_TENANT=
 ```
+
+### Any OpenID Connect provider
+
+The providers above are each bound to one product. This one is configured
+rather than compiled in, so it works with any provider that implements OpenID
+Connect: Pocket ID, Kanidm, Dex, Ory Hydra, or an in-house issuer.
+
+Register a confidential client with your provider, with the callback URL
+`https://YOURINSTANCE/oauth/oidc/verify`, then set three variables:
+
+```ini
+OAUTH_OIDC_ISSUER=https://idp.example.com # the issuer, exactly as the provider spells it
+OAUTH_OIDC_ID=3245498543 # your client ID
+OAUTH_OIDC_SECRET=xJHGApsadOPUIAsdoih # your client secret
+```
+
+The authorization, token, userinfo and JWKS endpoints are read from
+`{issuer}/.well-known/openid-configuration`, which is cached for a day. The
+login button is labelled from `OAUTH_OIDC_DISPLAY_NAME` (it says "OpenID
+Connect" if you leave that empty), and the username is taken from the
+`preferred_username` claim unless `OAUTH_OIDC_USERNAME_CLAIM` names another
+one.
+
+PKCE is always used, and the `id_token` is verified: its signature against the
+provider's published keys, its issuer against the value you configured, its
+audience against your client ID, its expiry, and its nonce against the value
+Mbin sent. The subject in the userinfo response must match the subject in the
+token.
+
+#### When discovery is not enough
+
+Some providers publish a discovery document that names addresses your instance
+cannot reach, typically when Mbin and the provider are containers on the same
+host. Any endpoint can be overridden, and an override always wins:
+
+```ini
+OAUTH_OIDC_AUTHORIZE_URL=
+OAUTH_OIDC_TOKEN_URL=
+OAUTH_OIDC_USERINFO_URL=http://idp:8080/userinfo
+OAUTH_OIDC_JWKS_URL=
+```
+
+Setting all four skips the discovery request entirely. `OAUTH_OIDC_ISSUER` is
+still required in that case, because it is what the `iss` claim is checked
+against.
+
+#### Moving an existing integration onto this provider
+
+Accounts are linked per provider, so an account created through, say, the
+Keycloak provider is not recognised by this one on sight. The next login falls
+back to matching on email address and relinks the account, which is usually
+enough.
+
+If you would rather it were deterministic, copy the identifiers yourself before
+the first login:
+
+```sql
+UPDATE "user" SET oauth_oidc_id = oauth_keycloak_id WHERE oauth_keycloak_id IS NOT NULL;
+```
+
+Only do this when both clients point at the same issuer. A subject identifier
+is unique within one provider and means nothing outside it, so copying between
+two different providers would link accounts to the wrong people.
