@@ -147,7 +147,7 @@ class UpdateHandler extends MbinMessageHandler
 
         $dto->title = $payload['object']['name'];
 
-        $this->extractChanges($dto, $payload);
+        $this->extractChanges($dto, $payload, $entry->magazine->name);
         $this->entryManager->edit($entry, $dto, $user);
     }
 
@@ -160,7 +160,7 @@ class UpdateHandler extends MbinMessageHandler
         }
         $dto = $this->entryCommentFactory->createDto($comment);
 
-        $this->extractChanges($dto, $payload);
+        $this->extractChanges($dto, $payload, $comment->magazine->name);
 
         $this->entryCommentManager->edit($comment, $dto, $user);
     }
@@ -174,7 +174,7 @@ class UpdateHandler extends MbinMessageHandler
         }
         $dto = $this->postFactory->createDto($post);
 
-        $this->extractChanges($dto, $payload);
+        $this->extractChanges($dto, $payload, $post->magazine->name);
 
         $this->postManager->edit($post, $dto, $user);
     }
@@ -188,16 +188,16 @@ class UpdateHandler extends MbinMessageHandler
         }
         $dto = $this->postCommentFactory->createDto($comment);
 
-        $this->extractChanges($dto, $payload);
+        $this->extractChanges($dto, $payload, $comment->magazine->name);
 
         $this->postCommentManager->edit($comment, $dto, $user);
     }
 
-    private function extractChanges(EntryDto|EntryCommentDto|PostDto|PostCommentDto $dto, array $payload): void
+    private function extractChanges(EntryDto|EntryCommentDto|PostDto|PostCommentDto $dto, array $payload, string $magazineName): void
     {
         $this->logger->debug('[UpdateHandler::extractChanges] extracting changes from {c}', ['c' => \get_class($dto)]);
         if (!empty($payload['object']['content'])) {
-            $dto->body = $this->objectExtractor->getMarkdownBody($payload['object']);
+            $dto->body = $this->objectExtractor->getMarkdownBody($payload['object'], $magazineName);
         } else {
             $dto->body = null;
         }

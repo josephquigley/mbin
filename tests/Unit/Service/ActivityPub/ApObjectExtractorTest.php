@@ -149,6 +149,55 @@ class ApObjectExtractorTest extends TestCase
         ];
     }
 
+    #[DataProvider('magazineProvider')]
+    public function testGetMarkdownBodyDropsTheMagazineHashtag(array $object, string $magazineName, ?array $expectedTags, string $name): void
+    {
+        $body = $this->extractor->getMarkdownBody($object, $magazineName);
+
+        self::assertEquals($expectedTags, $this->tagExtractor->extract($body), message: "Magazine test '$name'");
+    }
+
+    public static function magazineProvider(): array
+    {
+        $content = ['content' => 'Lorem ipsum'];
+
+        return [
+            [
+                'object' => $content + ['tag' => [
+                    ['type' => 'Hashtag', 'name' => '#someMagazine'],
+                ]],
+                'magazineName' => 'someMagazine',
+                'expectedTags' => null,
+                'name' => 'The magazine hashtag every Mbin note carries is not a tag',
+            ],
+            [
+                'object' => $content + ['tag' => [
+                    ['type' => 'Hashtag', 'name' => '#SOMEMAGAZINE'],
+                ]],
+                'magazineName' => 'someMagazine',
+                'expectedTags' => null,
+                'name' => 'The magazine hashtag is matched after normalization',
+            ],
+            [
+                'object' => $content + ['tag' => [
+                    ['type' => 'Hashtag', 'name' => '#someMagazine'],
+                    ['type' => 'Hashtag', 'name' => '#foo'],
+                ]],
+                'magazineName' => 'someMagazine',
+                'expectedTags' => ['foo'],
+                'name' => 'Other hashtags of the same object are kept',
+            ],
+            [
+                'object' => ['content' => 'Lorem #someMagazine ipsum'] + ['tag' => [
+                    ['type' => 'Hashtag', 'name' => '#someMagazine'],
+                ]],
+                'magazineName' => 'someMagazine',
+                'expectedTags' => ['somemagazine'],
+                'name' => 'A magazine name the author typed into the body is left alone',
+            ],
+        ];
+    }
+
     public function testGetMarkdownBodyKeepsTheBodyText(): void
     {
         $body = $this->extractor->getMarkdownBody([

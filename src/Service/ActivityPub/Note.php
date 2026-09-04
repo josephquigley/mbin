@@ -139,7 +139,7 @@ class Note extends ActivityPubContent
             if ($actor->isDeleted || $actor->isSoftDeleted() || $actor->isTrashed()) {
                 throw new UserDeletedException();
             }
-            $dto->body = $this->objectExtractor->getMarkdownBody($object);
+            $dto->body = $this->objectExtractor->getMarkdownBody($object, $root instanceof Entry ? $root->magazine->name : null);
             if ($media = $this->objectExtractor->getExternalMediaBody($object)) {
                 $dto->body .= $media;
             }
@@ -195,7 +195,7 @@ class Note extends ActivityPubContent
                 $this->logger->debug("adding image to post '{title}', {image}", ['title' => $dto->slug, 'image' => $image->getId()]);
             }
 
-            $dto->body = $this->objectExtractor->getMarkdownBody($object);
+            $dto->body = $this->objectExtractor->getMarkdownBody($object, $dto->magazine->name);
             if ($media = $this->objectExtractor->getExternalMediaBody($object)) {
                 $dto->body .= $media;
             }
@@ -260,7 +260,7 @@ class Note extends ActivityPubContent
             if ($actor->isDeleted || $actor->isSoftDeleted() || $actor->isTrashed()) {
                 throw new UserDeletedException();
             }
-            $dto->body = $this->objectExtractor->getMarkdownBody($object);
+            $dto->body = $this->objectExtractor->getMarkdownBody($object, $root instanceof Post ? $root->magazine->name : null);
             if ($media = $this->objectExtractor->getExternalMediaBody($object)) {
                 $dto->body .= $media;
             }

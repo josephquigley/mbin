@@ -57,6 +57,7 @@ class HashtagTest extends ActivityPubFunctionalTestCase
         self::assertNotNull($entry);
         self::assertContains('federation', $this->tagLinkRepository->getTagsOfContent($entry));
         self::assertNotContains('remoteuser', $this->tagLinkRepository->getTagsOfContent($entry));
+        self::assertNotContains($this->localMagazine->name, $this->tagLinkRepository->getTagsOfContent($entry));
     }
 
     public function testCreateEntryCommentWithHashtag(): void
@@ -70,6 +71,7 @@ class HashtagTest extends ActivityPubFunctionalTestCase
         self::assertNotNull($comment);
         self::assertContains('federation', $this->tagLinkRepository->getTagsOfContent($comment));
         self::assertNotContains('remoteuser', $this->tagLinkRepository->getTagsOfContent($comment));
+        self::assertNotContains($this->localMagazine->name, $this->tagLinkRepository->getTagsOfContent($comment));
     }
 
     public function testCreatePostWithHashtag(): void
@@ -82,6 +84,9 @@ class HashtagTest extends ActivityPubFunctionalTestCase
         self::assertNotNull($post);
         self::assertContains('federation', $this->tagLinkRepository->getTagsOfContent($post));
         self::assertNotContains('remoteuser', $this->tagLinkRepository->getTagsOfContent($post));
+        // no magazine assertion here: PostNoteFactory is the one factory that also joins
+        // the magazine hashtag into the body, so a federated post has carried it as a tag
+        // since long before this change and dropping it is a separate question
     }
 
     public function testCreatePostCommentWithHashtag(): void
@@ -95,6 +100,7 @@ class HashtagTest extends ActivityPubFunctionalTestCase
         self::assertNotNull($comment);
         self::assertContains('federation', $this->tagLinkRepository->getTagsOfContent($comment));
         self::assertNotContains('remoteuser', $this->tagLinkRepository->getTagsOfContent($comment));
+        self::assertNotContains($this->localMagazine->name, $this->tagLinkRepository->getTagsOfContent($comment));
     }
 
     public function testHashtagOfTheTagArrayIsNotDuplicatedByTheOneInTheBody(): void

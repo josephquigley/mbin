@@ -20,11 +20,13 @@ class ApObjectExtractor
 
     /**
      * @param array<string, mixed> $object
+     * @param string|null          $magazineName the name of the magazine the object belongs to, so that the
+     *                                           magazine hashtag every Mbin note carries is not stored as a tag
      */
-    public function getMarkdownBody(array $object): ?string
+    public function getMarkdownBody(array $object, ?string $magazineName = null): ?string
     {
         $body = $this->extractBody($object);
-        $hashtags = $this->getHashtags($object['tag'] ?? []);
+        $hashtags = $this->getHashtags($object['tag'] ?? [], $magazineName);
 
         if (!$hashtags) {
             return $body;
@@ -40,11 +42,16 @@ class ApObjectExtractor
      *
      * @return string[]
      */
-    private function getHashtags(mixed $tags): array
+    private function getHashtags(mixed $tags, ?string $magazineName): array
     {
         if (!\is_array($tags)) {
             return [];
         }
+
+        // every outbound Mbin note carries the name of its magazine as a hashtag, for
+        // discoverability on Mastodon. It is not a tag the author wrote and the sending
+        // instance does not store it as one either, so it is dropped here as well.
+        $magazineTag = null !== $magazineName ? ($this->tagExtractor->extract('#'.$magazineName)[0] ?? null) : null;
 
         if (isset($tags['type'])) {
             // a single object rather than a list of them
@@ -60,7 +67,7 @@ class ApObjectExtractor
             // running the name back through the extractor is what keeps this
             // normalization identical to the one applied to inline hashtags,
             // and it drops names the local pattern would not have accepted
-            $extracted = $this->tagExtractor->extract('#'.ltrim(trim($tag['name']), '#'));
+            $extracted = $this->tagExtractor->extract('#'.ltrim(trim($tag['name']), '#'), $magazineTag);
             if ($extracted) {
                 $result[] = $extracted[0];
             }
