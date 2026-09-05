@@ -15,6 +15,7 @@ use App\Security\Oidc\OidcClient;
 use App\Service\ImageManagerInterface;
 use App\Service\IpResolver;
 use App\Service\Oidc\Exception\OidcValidationException;
+use App\Service\Oidc\OidcAdminGroupPolicy;
 use App\Service\Oidc\OidcTokenValidator;
 use App\Service\SettingsManager;
 use App\Service\UserManager;
@@ -23,7 +24,9 @@ use Doctrine\ORM\EntityManagerInterface;
 use League\OAuth2\Client\Token\AccessToken;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\RememberMeBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
@@ -41,9 +44,18 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
      */
     private const FAILURE_MESSAGE = 'Authentication failed.';
 
+    /**
+     * Request attribute set while loading the user and read back once the
+     * login has succeeded. Admin cannot be granted while the user is being
+     * loaded, because the user checker (banned, deleted, application still
+     * pending) has not run yet and a refused login must leave nothing behind.
+     */
+    private const PROMOTE_ATTRIBUTE = 'oidc_admin_group_entitled';
+
     public function __construct(
         private readonly OidcClient $client,
         private readonly OidcTokenValidator $tokenValidator,
+        private readonly OidcAdminGroupPolicy $adminGroupPolicy,
         private readonly EntityManagerInterface $entityManager,
         private readonly UserManager $userManager,
         private readonly ImageManagerInterface $imageManager,
@@ -112,6 +124,8 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
                 );
 
                 if ($existingUser) {
+                    $this->rememberEntitlement($request, $existingUser, $claims, $oidcUser);
+
                     return $existingUser;
                 }
 
@@ -140,6 +154,8 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
 
                     $this->entityManager->persist($user);
                     $this->entityManager->flush();
+
+                    $this->rememberEntitlement($request, $user, $claims, $oidcUser);
 
                     return $user;
                 }
@@ -173,12 +189,62 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
                 $this->entityManager->persist($user);
                 $this->entityManager->flush();
 
+                $this->rememberEntitlement($request, $user, $claims, $oidcUser);
+
                 return $user;
             }),
             [
                 $rememberBadge,
             ]
         );
+    }
+
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
+    {
+        $user = $token->getUser();
+
+        if ($user instanceof User && true === $request->attributes->get(self::PROMOTE_ATTRIBUTE)) {
+            $this->promote($user);
+        }
+
+        return parent::onAuthenticationSuccess($request, $token, $firewallName);
+    }
+
+    /**
+     * Records, for onAuthenticationSuccess, that the provider placed this
+     * person in the configured admin group.
+     *
+     * @param array<string, mixed> $claims
+     */
+    private function rememberEntitlement(Request $request, User $user, array $claims, OidcResourceOwner $oidcUser): void
+    {
+        if ($user->isAdmin() || !$this->adminGroupPolicy->shouldPromote($claims, $oidcUser)) {
+            return;
+        }
+
+        $request->attributes->set(self::PROMOTE_ATTRIBUTE, true);
+    }
+
+    /**
+     * Grants ROLE_ADMIN. Never removes it: see OidcAdminGroupPolicy for why
+     * taking admin away on a claim's absence is the more dangerous of the two
+     * mistakes.
+     */
+    private function promote(User $user): void
+    {
+        if ($user->isAdmin()) {
+            return;
+        }
+
+        $user->setOrRemoveAdminRole();
+
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        $this->logger->notice('Granted ROLE_ADMIN to {username}: the OIDC provider placed them in {group}', [
+            'username' => $user->getUserIdentifier(),
+            'group' => $this->adminGroupPolicy->group(),
+        ]);
     }
 
     private function getAvatar(?string $pictureUrl): ?Image

@@ -55,6 +55,23 @@ class OidcResourceOwner implements ResourceOwnerInterface
     }
 
     /**
+     * Group names from the userinfo response, or an empty list when the
+     * provider sends none. Only used when OAUTH_OIDC_ADMIN_GROUP is set.
+     *
+     * @return string[]
+     */
+    public function getGroups(): array
+    {
+        $groups = $this->response['groups'] ?? null;
+
+        if (!\is_array($groups)) {
+            return [];
+        }
+
+        return array_values(array_filter($groups, 'is_string'));
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

@@ -228,6 +228,56 @@ address at your provider could sign in as whichever member owns it. If your
 provider does not verify addresses, or does not send the claim, existing
 members cannot be matched this way: link them yourself, as described below.
 
+#### Letting your provider appoint administrators
+
+By default it cannot, and that is the safe default: `OAUTH_OIDC_ADMIN_GROUP` is
+empty, no group claim is requested or read, and the only way to make someone an
+administrator is inside Mbin.
+
+```sh
+php bin/console mbin:user:admin <username>
+```
+
+That matches every other login provider Mbin ships. A provider tells Mbin who
+somebody is; it does not tell Mbin what they may do.
+
+If you would rather your provider decided, name the group:
+
+```ini
+OAUTH_OIDC_ADMIN_GROUP=mbin-admins
+```
+
+Mbin then requests the `groups` scope, and anyone whose group list contains that
+name is granted `ROLE_ADMIN` once they have logged in. A login the user checker
+refuses (banned, deleted, application still pending) grants nothing. The list
+is read from the verified `id_token` first and from the userinfo response only
+if the token carries no `groups` claim at all. The userinfo response is not
+signed, so it is only consulted when the userinfo endpoint is HTTPS: an
+`OAUTH_OIDC_USERINFO_URL` override on a plain `http://` address keeps logins
+working but cannot appoint administrators, and the refusal is logged. Matching
+is exact and case sensitive.
+
+**Promotion is one-way.** Taking someone out of the group in your provider does
+not take away their Mbin admin. This is deliberate. On an instance with
+`MBIN_SSO_ONLY_MODE` there is no password login to fall back on, so a provider
+that stops sending the claim (a renamed group, a scope that quietly stopped
+being granted, a migration) would lock every administrator out of the instance
+at the same moment. Removing admin stays a local, deliberate act:
+
+```sh
+php bin/console mbin:user:admin --remove <username>
+```
+
+Two things follow from this that are worth being explicit about. Whoever
+controls that group in your provider can appoint Mbin administrators, so it
+should be as closely held as the Mbin admin role itself. And because the claim
+is read from a token whose signature, issuer, audience and nonce have all been
+checked, this is only as trustworthy as the issuer you configured: point
+`OAUTH_OIDC_ISSUER` at something you control. If you ever change the issuer,
+clear the stored identifiers first (see "Changing the issuer" below), because
+a colliding subject at the new provider would otherwise inherit not just an
+account but, if it is in the group, admin.
+
 #### When discovery is not enough
 
 Some providers publish a discovery document that names addresses your instance
