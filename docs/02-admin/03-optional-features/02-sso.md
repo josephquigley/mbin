@@ -248,9 +248,14 @@ OAUTH_OIDC_ADMIN_GROUP=mbin-admins
 ```
 
 Mbin then requests the `groups` scope, and anyone whose group list contains that
-name is granted `ROLE_ADMIN` when they log in. The list is read from the
-verified `id_token` first and from the userinfo response only if the token
-carries no `groups` claim at all. Matching is exact and case sensitive.
+name is granted `ROLE_ADMIN` once they have logged in. A login the user checker
+refuses (banned, deleted, application still pending) grants nothing. The list
+is read from the verified `id_token` first and from the userinfo response only
+if the token carries no `groups` claim at all. The userinfo response is not
+signed, so it is only consulted when the userinfo endpoint is HTTPS: an
+`OAUTH_OIDC_USERINFO_URL` override on a plain `http://` address keeps logins
+working but cannot appoint administrators, and the refusal is logged. Matching
+is exact and case sensitive.
 
 **Promotion is one-way.** Taking someone out of the group in your provider does
 not take away their Mbin admin. This is deliberate. On an instance with
@@ -268,7 +273,10 @@ controls that group in your provider can appoint Mbin administrators, so it
 should be as closely held as the Mbin admin role itself. And because the claim
 is read from a token whose signature, issuer, audience and nonce have all been
 checked, this is only as trustworthy as the issuer you configured: point
-`OAUTH_OIDC_ISSUER` at something you control.
+`OAUTH_OIDC_ISSUER` at something you control. If you ever change the issuer,
+clear the stored identifiers first (see "Changing the issuer" below), because
+a colliding subject at the new provider would otherwise inherit not just an
+account but, if it is in the group, admin.
 
 #### When discovery is not enough
 
