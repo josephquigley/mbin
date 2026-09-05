@@ -233,4 +233,25 @@ class SignatureValidatorTest extends TestCase
         $this->expectExceptionMessage('Necessary supplied URL does not use HTTPS.');
         $sut->validate(['uri' => '/f/inbox'], $this->headers, json_encode($badBody));
     }
+
+    public function testItDoesNotValidateARequestWhoseActorCannotBeResolved(): void
+    {
+        $this->createSignedRequest('/f/inbox');
+
+        $this->headers['signature'][0] = \sprintf($this->headers['signature'][0], 'https://kbin.localhost/m/group');
+
+        // A defederated or unreachable instance is the ordinary way this happens.
+        $apManager = $this->createStub(ActivityPubManager::class);
+        $apManager->method('findActorOrCreate')
+            ->willReturn(null);
+
+        $apHttpClient = $this->createStub(ApHttpClientInterface::class);
+        $logger = $this->createStub(LoggerInterface::class);
+
+        $sut = new SignatureValidator($apManager, $apHttpClient, $logger);
+
+        $this->expectException(InvalidApSignatureException::class);
+        $this->expectExceptionMessage('Could not resolve the actor');
+        $sut->validate(['uri' => '/f/inbox'], $this->headers, json_encode($this->body));
+    }
 }

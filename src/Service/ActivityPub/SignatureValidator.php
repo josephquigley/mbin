@@ -129,6 +129,12 @@ readonly class SignatureValidator
             }
 
             $this->verifySignature($pkey, $signature, $headers, $request['uri'], $body);
+        } else {
+            // Without this the method returns having verified nothing, which reads as
+            // success to its caller. An actor that cannot be resolved is the ordinary
+            // shape of a request from a defederated instance, so this is not a rare
+            // path.
+            throw new InvalidApSignatureException("Could not resolve the actor '$actorUrl' the signature claims to come from.");
         }
     }
 
