@@ -151,3 +151,129 @@ OAUTH_AZURE_ID=3245498543 # your client ID
 OAUTH_AZURE_SECRET=xJHGApsadOPUIAsdoih # your client secret
 OAUTH_AZURE_TENANT=
 ```
+
+### Any OpenID Connect provider
+
+The providers above are each bound to one product. This one is configured
+rather than compiled in, so it works with any provider that implements OpenID
+Connect: Pocket ID, Kanidm, Dex, Ory Hydra, or an in-house issuer.
+
+Register a confidential client with your provider, with the callback URL
+`https://YOURINSTANCE/oauth/oidc/verify`, then set three variables:
+
+```ini
+OAUTH_OIDC_ISSUER=https://idp.example.com # the issuer, exactly as the provider spells it
+OAUTH_OIDC_ID=3245498543 # your client ID
+OAUTH_OIDC_SECRET=xJHGApsadOPUIAsdoih # your client secret
+```
+
+The authorization, token, userinfo and JWKS endpoints are read from
+`{issuer}/.well-known/openid-configuration`, which is cached for a day. The
+username is taken from the `preferred_username` claim unless
+`OAUTH_OIDC_USERNAME_CLAIM` names another one.
+
+#### The login button
+
+Set `OAUTH_OIDC_DISPLAY_NAME` to whatever your members call the place they are
+signing in to. It is worth setting: the fallback is the words "OpenID
+Connect", which is accurate and means nothing to anyone who does not already
+know what OIDC is.
+
+```ini
+OAUTH_OIDC_DISPLAY_NAME=Example Ltd
+```
+
+The name cannot be discovered. Neither OpenID Connect Discovery nor RFC 8414
+gives a provider anywhere to publish its own name or logo (`client_name` and
+`logo_uri` are client metadata, describing your application to the provider,
+not the other way round), so this has to be configuration.
+
+The icon is a different matter, and Mbin goes looking. It tries
+`{issuer}/favicon.ico`, then the `<link rel="icon">` of the issuer's own home
+page, caches what it finds for a day, and inlines it on the button. The second
+attempt matters more than it sounds: a single-page provider often serves its
+application shell for any unknown path, so `/favicon.ico` answers 200 with HTML
+and no icon while the shell names the real one. A declared icon is only
+followed when it stays on the issuer's own origin, and redirects are not
+followed at all, so the provider cannot send this fetch anywhere else.
+The image is embedded rather than linked, so rendering the login page makes no
+request to your provider and it works when the provider is reachable from the
+Mbin container but not from a member's browser. Anything that is not a small
+image (wrong content type, larger than 32 KB, an error, a timeout) falls back
+to a generic lock icon, and a failed fetch is retried an hour later rather than
+on every page load.
+
+To skip the fetch entirely:
+
+```ini
+OAUTH_OIDC_FETCH_ICON=false
+```
+
+PKCE is always used, and the `id_token` is verified: its signature against the
+provider's published keys, its issuer against the value you configured, its
+audience against your client ID, its expiry (which must be present), and its
+nonce against the value Mbin sent. The subject in the userinfo response must
+match the subject in the token.
+
+The discovery document must name the same issuer you configured. A document
+that claims another issuer is rejected, as OpenID Connect Discovery requires.
+
+#### Matching on email
+
+A member who has never signed in through this provider is matched to an
+existing account by email address, but only when the provider sends
+`email_verified: true` for that address. Without it, the login is refused and
+the reason is logged. Otherwise anyone who could register an unverified
+address at your provider could sign in as whichever member owns it. If your
+provider does not verify addresses, or does not send the claim, existing
+members cannot be matched this way: link them yourself, as described below.
+
+#### When discovery is not enough
+
+Some providers publish a discovery document that names addresses your instance
+cannot reach, typically when Mbin and the provider are containers on the same
+host. Any endpoint can be overridden, and an override always wins:
+
+```ini
+OAUTH_OIDC_AUTHORIZE_URL=
+OAUTH_OIDC_TOKEN_URL=
+OAUTH_OIDC_USERINFO_URL=http://idp:8080/userinfo
+OAUTH_OIDC_JWKS_URL=
+```
+
+Setting all four skips the discovery request entirely. `OAUTH_OIDC_ISSUER` is
+still required in that case, because it is what the `iss` claim is checked
+against.
+
+#### Moving an existing integration onto this provider
+
+Accounts are linked per provider, so an account created through, say, the
+Keycloak provider is not recognised by this one on sight. The next login falls
+back to matching on email address and relinks the account, which is usually
+enough.
+
+If you would rather it were deterministic, copy the identifiers yourself before
+the first login:
+
+```sql
+UPDATE "user" SET oauth_oidc_id = oauth_keycloak_id WHERE oauth_keycloak_id IS NOT NULL;
+```
+
+Only do this when both clients point at the same issuer. A subject identifier
+is unique within one provider and means nothing outside it, so copying between
+two different providers would link accounts to the wrong people.
+
+#### Changing the issuer
+
+The same rule applies when you point `OAUTH_OIDC_ISSUER` at a different
+provider. The subject identifiers already stored belong to the old provider,
+and the new one may hand out the same values to different people (sequential
+numbers are common), which would sign them into the wrong accounts. Clear the
+stored identifiers before the first login against the new provider:
+
+```sql
+UPDATE "user" SET oauth_oidc_id = NULL WHERE oauth_oidc_id IS NOT NULL;
+```
+
+Members are then matched again by verified email on their next login, or can
+be linked by hand as above.

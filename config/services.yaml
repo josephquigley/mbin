@@ -89,6 +89,20 @@ parameters:
     oauth_authentik_secret: '%env(OAUTH_AUTHENTIK_SECRET)%'
     oauth_authentik_base_url: '%env(OAUTH_AUTHENTIK_BASE_URL)%'
 
+    # Generic OIDC provider. Every variable uses the `default::` form so that an
+    # instance upgrading with its existing .env keeps booting: the bare
+    # %env(NAME)% form raises EnvNotFoundException when the variable is absent.
+    oauth_oidc_id: '%env(default::OAUTH_OIDC_ID)%'
+    oauth_oidc_secret: '%env(default::OAUTH_OIDC_SECRET)%'
+    oauth_oidc_issuer: '%env(default::OAUTH_OIDC_ISSUER)%'
+    oauth_oidc_display_name: '%env(default::OAUTH_OIDC_DISPLAY_NAME)%'
+    oauth_oidc_username_claim: '%env(default::OAUTH_OIDC_USERNAME_CLAIM)%'
+    oauth_oidc_fetch_icon: '%env(default::OAUTH_OIDC_FETCH_ICON)%'
+    oauth_oidc_authorize_url: '%env(default::OAUTH_OIDC_AUTHORIZE_URL)%'
+    oauth_oidc_token_url: '%env(default::OAUTH_OIDC_TOKEN_URL)%'
+    oauth_oidc_userinfo_url: '%env(default::OAUTH_OIDC_USERINFO_URL)%'
+    oauth_oidc_jwks_url: '%env(default::OAUTH_OIDC_JWKS_URL)%'
+
     router.request_context.host: '%env(KBIN_DOMAIN)%'
     router.request_context.scheme: https
 
@@ -303,3 +317,50 @@ services:
     Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler:
         arguments:
             - '%env(DATABASE_URL)%'
+
+    App\Service\Oidc\OidcMetadataResolver:
+        arguments:
+            $httpClient: '@http_client'
+            $cache: '@cache.app'
+            $issuer: '%oauth_oidc_issuer%'
+            $authorizationEndpoint: '%oauth_oidc_authorize_url%'
+            $tokenEndpoint: '%oauth_oidc_token_url%'
+            $userinfoEndpoint: '%oauth_oidc_userinfo_url%'
+            $jwksUri: '%oauth_oidc_jwks_url%'
+
+    App\Service\Oidc\OidcValidatorFactory:
+        arguments:
+            $cache: '@cache.app'
+            $clientId: '%oauth_oidc_id%'
+            $issuer: '%oauth_oidc_issuer%'
+
+    App\Service\Oidc\OidcTokenValidator:
+        factory: ['@App\Service\Oidc\OidcValidatorFactory', 'create']
+
+    # Built through the bundle's own provider factory, which turns the route
+    # name below into an absolute redirect URI. Unlike the nine named
+    # providers this client is not declared in knpu_oauth2_client.yaml,
+    # because the bundle passes provider_options through as raw configuration
+    # and cannot inject the HTTP client and cache that discovery needs.
+    App\Provider\Oidc:
+        factory: ['@knpu.oauth2.provider_factory', 'createProvider']
+        arguments:
+            - 'App\Provider\Oidc'
+            -
+                clientId: '%oauth_oidc_id%'
+                clientSecret: '%oauth_oidc_secret%'
+                metadata_resolver: '@App\Service\Oidc\OidcMetadataResolver'
+                username_claim: '%oauth_oidc_username_claim%'
+            - 'oauth_oidc_verify'
+
+    App\Security\Oidc\OidcClient:
+        arguments:
+            - '@App\Provider\Oidc'
+            - '@request_stack'
+
+    App\Service\Oidc\OidcIconResolver:
+        arguments:
+            $httpClient: '@http_client'
+            $cache: '@cache.app'
+            $issuer: '%oauth_oidc_issuer%'
+            $fetchIcon: '%oauth_oidc_fetch_icon%'

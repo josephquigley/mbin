@@ -1,5 +1,5 @@
 {# @var this App\Twig\Components\LoginSocialsComponent #}
-{%- set HAS_ANY_SOCIAL = this.googleEnabled or this.facebookEnabled or this.discordEnabled or this.githubEnabled or this.keycloakEnabled or this.simpleloginEnabled or this.zitadelEnabled or this.authentikEnabled or this.azureEnabled or this.privacyPortalEnabled -%}
+{%- set HAS_ANY_SOCIAL = this.googleEnabled or this.facebookEnabled or this.discordEnabled or this.githubEnabled or this.keycloakEnabled or this.simpleloginEnabled or this.zitadelEnabled or this.authentikEnabled or this.azureEnabled or this.privacyPortalEnabled or this.oidcEnabled -%}
 {% if HAS_ANY_SOCIAL %}
     {% if not mbin_sso_only_mode() and not mbin_sso_show_first() %}
     <div class="separator separator-show"></div>
@@ -40,6 +40,11 @@
         {% if this.azureEnabled %}
             <a href="{{ path('oauth_azure_connect') }}" class="btn btn__secondary"><i class="fa-brands fa-microsoft" aria-hidden="true"></i>
                 <span>{{ 'continue_with'|trans }} Microsoft</span></a>
+        {% endif %}
+        {% if this.oidcEnabled %}
+            {% set oidc_icon = this.oidcIcon %}
+            <a href="{{ path('oauth_oidc_connect') }}" class="btn btn__secondary">{% if oidc_icon %}<img src="{{ oidc_icon }}" alt="" width="16" height="16" aria-hidden="true">{% else %}<i class="fa-solid fa-lock" aria-hidden="true"></i>{% endif %}
+                <span>{{ 'continue_with'|trans }} {{ this.oidcDisplayName }}</span></a>
         {% endif %}
         {% if this.privacyPortalEnabled %}
             <a href="{{ path('oauth_privacyportal_connect') }}" class="btn btn__secondary"><i class="fa-brands fa-privacyportal" aria-hidden="true"></i>
