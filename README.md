@@ -117,6 +117,13 @@ Unofficial magazines:
 		</tr>
 		<tr>
             <td align="center">
+                <a href="https://github.com/josephquigley">
+                    <img src="https://avatars.githubusercontent.com/u/682509?v=4" width="100;" alt="josephquigley"/>
+                    <br />
+                    <sub><b>Joseph Quigley</b></sub>
+                </a>
+            </td>
+            <td align="center">
                 <a href="https://github.com/SzymonKaminski">
                     <img src="https://avatars.githubusercontent.com/u/8536735?v=4" width="100;" alt="SzymonKaminski"/>
                     <br />
@@ -128,13 +135,6 @@ Unofficial magazines:
                     <img src="https://avatars.githubusercontent.com/u/400210?v=4" width="100;" alt="cooperaj"/>
                     <br />
                     <sub><b>Adam Cooper</b></sub>
-                </a>
-            </td>
-            <td align="center">
-                <a href="https://github.com/josephquigley">
-                    <img src="https://avatars.githubusercontent.com/u/682509?v=4" width="100;" alt="josephquigley"/>
-                    <br />
-                    <sub><b>Joseph Quigley</b></sub>
                 </a>
             </td>
             <td align="center">
@@ -189,17 +189,17 @@ Unofficial magazines:
                 </a>
             </td>
             <td align="center">
-                <a href="https://github.com/GauthierPLM">
-                    <img src="https://avatars.githubusercontent.com/u/2579741?v=4" width="100;" alt="GauthierPLM"/>
-                    <br />
-                    <sub><b>Gauthier POGAM--LE MONTAGNER</b></sub>
-                </a>
-            </td>
-            <td align="center">
                 <a href="https://github.com/Ahrotahn">
                     <img src="https://avatars.githubusercontent.com/u/40727284?v=4" width="100;" alt="Ahrotahn"/>
                     <br />
                     <sub><b>Ahrotahn</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/GauthierPLM">
+                    <img src="https://avatars.githubusercontent.com/u/2579741?v=4" width="100;" alt="GauthierPLM"/>
+                    <br />
+                    <sub><b>Gauthier POGAM--LE MONTAGNER</b></sub>
                 </a>
             </td>
 		</tr>
@@ -341,6 +341,13 @@ Unofficial magazines:
                     <img src="https://avatars.githubusercontent.com/u/92675882?v=4" width="100;" alt="privacyguard"/>
                     <br />
                     <sub><b>privacyguard</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/neo22neo">
+                    <img src="https://avatars.githubusercontent.com/u/322465767?v=4" width="100;" alt="neo22neo"/>
+                    <br />
+                    <sub><b>neo22neo</b></sub>
                 </a>
             </td>
 		</tr>
