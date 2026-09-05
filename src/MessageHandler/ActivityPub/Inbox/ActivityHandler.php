@@ -8,6 +8,7 @@ use App\Entity\Instance;
 use App\Entity\Magazine;
 use App\Entity\User;
 use App\Exception\InboxForwardingException;
+use App\Exception\InvalidApSignatureException;
 use App\Exception\InvalidUserPublicKeyException;
 use App\Message\ActivityPub\Inbox\ActivityMessage;
 use App\Message\ActivityPub\Inbox\AddMessage;
@@ -91,6 +92,15 @@ class ActivityHandler extends MbinMessageHandler
                 return;
             } catch (InvalidUserPublicKeyException $exception) {
                 $this->logger->warning("[ActivityHandler::doWork] Unable to extract public key for '{user}'.", ['user' => $exception->apProfileId]);
+
+                return;
+            } catch (InvalidApSignatureException $exception) {
+                // Discard rather than fail. An unverifiable signature is a property of
+                // the message, so retrying it can only produce the same answer, and a
+                // message that cannot be authenticated is exactly what should not be
+                // acted on. This catch also keeps the ordinary defederated-sender case
+                // (the actor does not resolve) out of the failure transport.
+                $this->logger->warning('[ActivityHandler::doWork] Discarding an activity whose signature could not be verified: {reason}', ['reason' => $exception->getMessage()]);
 
                 return;
             }
