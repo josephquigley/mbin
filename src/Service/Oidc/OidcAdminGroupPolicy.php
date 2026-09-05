@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Service\Oidc;
 
 use App\Provider\OidcResourceOwner;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 /**
  * Decides whether a login should carry admin rights, from a group claim.
@@ -23,18 +25,25 @@ use App\Provider\OidcResourceOwner;
  * left as a local, deliberate act.
  *
  * The claim is read from the id_token first, which has been verified, and only
- * then from the userinfo response, which is fetched over TLS from the endpoint
- * discovery named. Both come from the provider; the id_token is preferred
- * because it is signed.
+ * then from the userinfo response. The userinfo response is not signed, so it
+ * is only as trustworthy as the transport it arrived over: it is consulted
+ * only when the userinfo endpoint is HTTPS. An admin who overrides the
+ * endpoint with a plain http:// address on a container network keeps working
+ * logins, but that response cannot appoint administrators.
  */
 class OidcAdminGroupPolicy
 {
     private ?string $adminGroup;
+    private LoggerInterface $logger;
 
-    public function __construct(?string $adminGroup)
-    {
+    public function __construct(
+        ?string $adminGroup,
+        private readonly OidcMetadataResolver $metadataResolver,
+        ?LoggerInterface $logger = null,
+    ) {
         $adminGroup = trim((string) $adminGroup);
         $this->adminGroup = '' === $adminGroup ? null : $adminGroup;
+        $this->logger = $logger ?? new NullLogger();
     }
 
     public function isEnabled(): bool
@@ -56,24 +65,46 @@ class OidcAdminGroupPolicy
             return false;
         }
 
-        $groups = self::groupsIn($idTokenClaims) ?? $resourceOwner->getGroups();
+        $groups = self::groupsIn($idTokenClaims);
+
+        if (null === $groups) {
+            if (!$this->userinfoIsTrusted()) {
+                $this->logger->warning('OIDC admin group ignored: the id_token carries no groups claim and the userinfo endpoint is not HTTPS');
+
+                return false;
+            }
+
+            $groups = $resourceOwner->getGroups();
+        }
 
         return \in_array($this->adminGroup, $groups, true);
+    }
+
+    private function userinfoIsTrusted(): bool
+    {
+        try {
+            $endpoint = $this->metadataResolver->resolve()->userinfoEndpoint;
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return str_starts_with(strtolower($endpoint), 'https://');
     }
 
     /**
      * @param array<string, mixed> $claims
      *
-     * @return string[]|null null when the claim is absent, which is different
-     *                       from present and empty: absent means look further
+     * @return string[]|null null when the claim is absent or null, which is
+     *                       different from present and empty: absent means
+     *                       look further
      */
     private static function groupsIn(array $claims): ?array
     {
-        if (!\array_key_exists('groups', $claims)) {
+        $groups = $claims['groups'] ?? null;
+
+        if (null === $groups) {
             return null;
         }
-
-        $groups = $claims['groups'];
 
         if (!\is_array($groups)) {
             return [];

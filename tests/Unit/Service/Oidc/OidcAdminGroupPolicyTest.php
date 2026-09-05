@@ -6,14 +6,17 @@ namespace App\Tests\Unit\Service\Oidc;
 
 use App\Provider\OidcResourceOwner;
 use App\Service\Oidc\OidcAdminGroupPolicy;
+use App\Service\Oidc\OidcMetadataResolver;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\HttpClient\MockHttpClient;
 
 class OidcAdminGroupPolicyTest extends TestCase
 {
     public function testDisabledWhenNoGroupIsConfigured(): void
     {
-        $policy = new OidcAdminGroupPolicy(null);
+        $policy = $this->policy(null);
 
         self::assertFalse($policy->isEnabled());
         self::assertFalse($policy->shouldPromote(['groups' => ['mbin-admins']], $this->owner(['groups' => ['mbin-admins']])));
@@ -22,7 +25,7 @@ class OidcAdminGroupPolicyTest extends TestCase
     #[DataProvider('emptyConfigurations')]
     public function testWhitespaceAndEmptyStringsAreTreatedAsUnset(?string $configured): void
     {
-        self::assertFalse((new OidcAdminGroupPolicy($configured))->isEnabled());
+        self::assertFalse(($this->policy($configured))->isEnabled());
     }
 
     /**
@@ -37,21 +40,21 @@ class OidcAdminGroupPolicyTest extends TestCase
 
     public function testPromotesOnTheIdTokenClaim(): void
     {
-        $policy = new OidcAdminGroupPolicy('mbin-admins');
+        $policy = $this->policy('mbin-admins');
 
         self::assertTrue($policy->shouldPromote(['groups' => ['members', 'mbin-admins']], $this->owner([])));
     }
 
     public function testDoesNotPromoteWhenTheGroupIsAbsent(): void
     {
-        $policy = new OidcAdminGroupPolicy('mbin-admins');
+        $policy = $this->policy('mbin-admins');
 
         self::assertFalse($policy->shouldPromote(['groups' => ['members']], $this->owner([])));
     }
 
     public function testFallsBackToUserinfoWhenTheIdTokenCarriesNoGroupsClaim(): void
     {
-        $policy = new OidcAdminGroupPolicy('mbin-admins');
+        $policy = $this->policy('mbin-admins');
 
         self::assertTrue($policy->shouldPromote([], $this->owner(['groups' => ['mbin-admins']])));
     }
@@ -62,14 +65,14 @@ class OidcAdminGroupPolicyTest extends TestCase
      */
     public function testAnEmptyIdTokenClaimIsNotOverriddenByUserinfo(): void
     {
-        $policy = new OidcAdminGroupPolicy('mbin-admins');
+        $policy = $this->policy('mbin-admins');
 
         self::assertFalse($policy->shouldPromote(['groups' => []], $this->owner(['groups' => ['mbin-admins']])));
     }
 
     public function testAMalformedClaimDoesNotPromote(): void
     {
-        $policy = new OidcAdminGroupPolicy('mbin-admins');
+        $policy = $this->policy('mbin-admins');
 
         self::assertFalse($policy->shouldPromote(['groups' => 'mbin-admins'], $this->owner([])));
         self::assertFalse($policy->shouldPromote(['groups' => [['mbin-admins']]], $this->owner([])));
@@ -77,10 +80,56 @@ class OidcAdminGroupPolicyTest extends TestCase
 
     public function testMatchingIsExactAndCaseSensitive(): void
     {
-        $policy = new OidcAdminGroupPolicy('mbin-admins');
+        $policy = $this->policy('mbin-admins');
 
         self::assertFalse($policy->shouldPromote(['groups' => ['Mbin-Admins']], $this->owner([])));
         self::assertFalse($policy->shouldPromote(['groups' => ['mbin-admins-readonly']], $this->owner([])));
+    }
+
+    /**
+     * The userinfo response is not signed, so a group list read from it is
+     * only as trustworthy as the transport. Over plain HTTP anything on the
+     * path could add a group and mint an administrator.
+     */
+    public function testUserinfoGroupsAreIgnoredWhenTheEndpointIsPlainHttp(): void
+    {
+        $policy = $this->policy('mbin-admins', userinfo: 'http://idp:8080/userinfo');
+
+        self::assertFalse($policy->shouldPromote([], $this->owner(['groups' => ['mbin-admins']])));
+    }
+
+    public function testUserinfoGroupsAreUsedWhenTheEndpointIsHttps(): void
+    {
+        $policy = $this->policy('mbin-admins', userinfo: 'https://idp.test/userinfo');
+
+        self::assertTrue($policy->shouldPromote([], $this->owner(['groups' => ['mbin-admins']])));
+    }
+
+    public function testASignedGroupClaimIsTrustedRegardlessOfTheUserinfoTransport(): void
+    {
+        $policy = $this->policy('mbin-admins', userinfo: 'http://idp:8080/userinfo');
+
+        self::assertTrue($policy->shouldPromote(['groups' => ['mbin-admins']], $this->owner([])));
+    }
+
+    public function testANullGroupClaimInTheTokenCountsAsAbsent(): void
+    {
+        self::assertTrue($this->policy('mbin-admins')->shouldPromote(['groups' => null], $this->owner(['groups' => ['mbin-admins']])));
+    }
+
+    private function policy(?string $group, string $userinfo = 'https://idp.test/userinfo'): OidcAdminGroupPolicy
+    {
+        $resolver = new OidcMetadataResolver(
+            new MockHttpClient([]),
+            new ArrayAdapter(),
+            'https://idp.test',
+            'https://idp.test/authorize',
+            'https://idp.test/token',
+            $userinfo,
+            'https://idp.test/jwks',
+        );
+
+        return new OidcAdminGroupPolicy($group, $resolver);
     }
 
     /**

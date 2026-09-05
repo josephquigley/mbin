@@ -14,6 +14,7 @@ use App\Security\OidcAuthenticator;
 use App\Service\ImageManagerInterface;
 use App\Service\IpResolver;
 use App\Service\Oidc\OidcAdminGroupPolicy;
+use App\Service\Oidc\OidcMetadataResolver;
 use App\Service\Oidc\OidcTokenValidator;
 use App\Service\SettingsManager;
 use App\Service\UserManager;
@@ -23,6 +24,8 @@ use Doctrine\ORM\EntityRepository;
 use League\OAuth2\Client\Token\AccessToken;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
@@ -85,7 +88,7 @@ class OidcAuthenticatorEmailLinkTest extends TestCase
         $authenticator = new OidcAuthenticator(
             $client,
             $validator,
-            new OidcAdminGroupPolicy(null),
+            new OidcAdminGroupPolicy(null, new OidcMetadataResolver(new MockHttpClient([]), new ArrayAdapter(), 'https://idp.test', 'https://idp.test/a', 'https://idp.test/t', 'https://idp.test/u', 'https://idp.test/j')),
             $entityManager,
             $this->createStub(UserManager::class),
             $this->createStub(ImageManagerInterface::class),
