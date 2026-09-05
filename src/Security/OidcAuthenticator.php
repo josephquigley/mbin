@@ -24,7 +24,9 @@ use Doctrine\ORM\EntityManagerInterface;
 use League\OAuth2\Client\Token\AccessToken;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\RememberMeBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
@@ -41,6 +43,14 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
      * than translating it.
      */
     private const FAILURE_MESSAGE = 'Authentication failed.';
+
+    /**
+     * Request attribute set while loading the user and read back once the
+     * login has succeeded. Admin cannot be granted while the user is being
+     * loaded, because the user checker (banned, deleted, application still
+     * pending) has not run yet and a refused login must leave nothing behind.
+     */
+    private const PROMOTE_ATTRIBUTE = 'oidc_admin_group_entitled';
 
     public function __construct(
         private readonly OidcClient $client,
@@ -114,7 +124,7 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
                 );
 
                 if ($existingUser) {
-                    $this->promoteIfEntitled($existingUser, $claims, $oidcUser);
+                    $this->rememberEntitlement($request, $existingUser, $claims, $oidcUser);
 
                     return $existingUser;
                 }
@@ -145,7 +155,7 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
                     $this->entityManager->persist($user);
                     $this->entityManager->flush();
 
-                    $this->promoteIfEntitled($user, $claims, $oidcUser);
+                    $this->rememberEntitlement($request, $user, $claims, $oidcUser);
 
                     return $user;
                 }
@@ -179,7 +189,7 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
                 $this->entityManager->persist($user);
                 $this->entityManager->flush();
 
-                $this->promoteIfEntitled($user, $claims, $oidcUser);
+                $this->rememberEntitlement($request, $user, $claims, $oidcUser);
 
                 return $user;
             }),
@@ -189,17 +199,40 @@ class OidcAuthenticator extends MbinOAuthAuthenticatorBase
         );
     }
 
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
+    {
+        $user = $token->getUser();
+
+        if ($user instanceof User && true === $request->attributes->get(self::PROMOTE_ATTRIBUTE)) {
+            $this->promote($user);
+        }
+
+        return parent::onAuthenticationSuccess($request, $token, $firewallName);
+    }
+
     /**
-     * Grants ROLE_ADMIN when the provider says this person is in the
-     * configured admin group. Never removes it: see OidcAdminGroupPolicy for
-     * why taking admin away on a claim's absence is the more dangerous of the
-     * two mistakes.
+     * Records, for onAuthenticationSuccess, that the provider placed this
+     * person in the configured admin group.
      *
      * @param array<string, mixed> $claims
      */
-    private function promoteIfEntitled(User $user, array $claims, OidcResourceOwner $oidcUser): void
+    private function rememberEntitlement(Request $request, User $user, array $claims, OidcResourceOwner $oidcUser): void
     {
         if ($user->isAdmin() || !$this->adminGroupPolicy->shouldPromote($claims, $oidcUser)) {
+            return;
+        }
+
+        $request->attributes->set(self::PROMOTE_ATTRIBUTE, true);
+    }
+
+    /**
+     * Grants ROLE_ADMIN. Never removes it: see OidcAdminGroupPolicy for why
+     * taking admin away on a claim's absence is the more dangerous of the two
+     * mistakes.
+     */
+    private function promote(User $user): void
+    {
+        if ($user->isAdmin()) {
             return;
         }
 
